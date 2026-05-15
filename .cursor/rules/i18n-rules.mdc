@@ -1,0 +1,50 @@
+---
+description: Internationalization—no hardcoded UI strings; EN/RU/TR; Portuguese removal path
+globs: apps/web/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Internationalization (frontend)
+
+These rules apply to **visible UI copy** and **frontend string management** under `apps/web/`.
+
+## No hardcoded user-visible strings in components
+
+- **Do not** embed user-visible literal strings directly in JSX/TSX (`<Button>Save</button>`, `title="..."`, `toast("...")`, etc.).
+- Exceptions only where the stack makes it unavoidable transiently—in that case, add an immediate follow-up todo to migrate to keys.
+- Prefer a single mechanism (once introduced) such as **`react-i18next`**, **`i18next`**, or an equivalent lightweight i18n layer—**do not add a library until the adopting task**; justify the choice when adding.
+
+## Languages
+
+The product must target **three UI languages**:
+
+| Code | Language  | Role     |
+| ---- | --------- | -------- |
+| `en` | English   | **Default** |
+| `ru` | Russian   | Supported |
+| `tr` | Turkish   | Supported |
+
+- **English** is the **default** locale at first load (until a persisted user preference overrides it).
+- The app **will** include an in-UI **language selector** (implement when tasked; design it so adding it later does not require string churn).
+
+## Translation sources
+
+- All copy must map to **translation keys**, with resources for **`en`**, **`ru`**, and **`tr`**.
+- Maintain parity across locales: adding a key in one locale requires entries in **all three** unless explicitly marked unused (avoid that).
+- Existing **Portuguese** UI text must be **removed from the codebase as default UI** over time—replaced by **English** as the authoring base plus **Russian** and **Turkish** equivalents in translation files.
+
+## Naming and typography
+
+- **Keys** stay in English and use a consistent naming convention e.g. `feature.section.element` (`auth.login.submit`, `board.column.todo`).
+- **Do not** put technical jargon into user-visible strings unless it is accurate product terminology.
+
+## Backend and gateway
+
+- This rule file targets the **web app**. Gateway/service error messages surfaced to users should eventually route through i18n on the client (map codes → keys); **avoid breaking API contracts** when adjusting message payloads.
+
+## Testing i18n
+
+When touching strings:
+
+- Spot-check layouts for **longer translations** (especially Russian/Turkish) in cramped UI.
+- Verify **fallback** behaves: missing key shows a visible signal in dev only—not broken production UX.

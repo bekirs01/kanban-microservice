@@ -1,0 +1,16 @@
+{
+  "extends": "@challenge/typescript-config/service.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "sourceMap": true,
+    "removeComments": true,
+    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "noFallthroughCasesInSwitch": false
+  },
+  "include": ["src/**/*", "db/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,53 @@
+---
+description: Mandatory workflow—investigate, checkbox TODOs, summaries, avoid scope creep
+alwaysApply: true
+---
+
+# Workflow rules (every task)
+
+Apply this structure **for every future task** unless the user asks for something incompatible (then state the deviation briefly).
+
+## 1. Inspect first
+
+Before editing:
+
+- Locate and read **relevant files** (call sites, configs, tests, sibling components/services).
+- If behavior is unclear, trace one level deeper (routing, hooks, gateway, websocket) rather than guessing.
+
+## 2. TODO list before coding
+
+- Create a **clear TODO list** with **Markdown checkboxes** before making substantive edits.
+- Example format:
+
+```markdown
+- [ ] Inspect current language-related files
+- [ ] Find hardcoded UI texts
+- [ ] Create translation structure
+- [ ] Replace visible texts with translation keys
+- [ ] Add language switcher
+- [ ] Test the UI
+```
+
+- The list must reflect **actual work** for the task—not a generic boilerplate unless it fits.
+
+## 3. Progress tracking
+
+- **Do not skip** checkbox updates while working.
+- When an item completes, mark it **done**: `- [x] ...`
+- Prefer updating the todo list **as steps complete**, not only at the end.
+
+## 4. Scope discipline
+
+- **No unrelated changes** (no drive-by formatting, renames, or dependency bumps outside the task).
+- If something must be touched incidentally (e.g. a type shared by two files), keep that change minimal and mention it in the summary.
+
+## 5. Completion summary
+
+When finished, always summarize:
+
+1. **What changed** (outcome-focused, concise).
+2. **Which files changed** (paths or directories).
+3. **What should be tested manually** (explicit steps covering auth, Kanban moves, APIs, realtime if impacted).
+4. **Next recommended step** (single clear follow-up, aligned with user goals).
+
+Keep summaries factual; avoid fluff.

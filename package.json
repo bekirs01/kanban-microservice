@@ -1,0 +1,40 @@
+{
+  "name": "my-turborepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:backend": "bash scripts/dev-backend.sh",
+    "dev:frontend": "bash scripts/dev-frontend.sh",
+    "dev:gateway": "turbo run dev --filter=@challenge/api-gateway",
+    "dev:auth": "turbo run dev --filter=@challenge/auth-service",
+    "build:types": "turbo run build --filter=@challenge/types",
+    "build:exceptions": "turbo run build --filter=@challenge/exceptions",
+    "seed": "ts-node scripts/seed.ts"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/node": "^25.0.3",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "turbo": "^2.6.3",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "npm@10.9.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.3",
+    "dotenv": "^17.2.3",
+    "pg": "^8.16.3",
+    "typeorm": "^0.3.28"
+  }
+}

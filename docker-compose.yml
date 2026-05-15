@@ -1,0 +1,221 @@
+services:
+  # -----------------------------------------------------------------------------
+  # FRONTEND
+  # -----------------------------------------------------------------------------
+  web:
+    container_name: web
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+      target: development
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3001
+      - VITE_WEBSOCKET_URL=http://localhost:3004
+    networks:
+      - challenge-network
+    command: npm run dev --workspace=@challenge/web -- --host 0.0.0.0 --port 3000
+
+  # -----------------------------------------------------------------------------
+  # API GATEWAY (HTTP REST)
+  # -----------------------------------------------------------------------------
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: .
+      dockerfile: ./apps/api-gateway/Dockerfile
+      target: development
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - JWT_SECRET=jungle_super_secret_key_123
+      - AUTH_SERVICE_HOST=auth-service
+      - AUTH_SERVICE_PORT=3002
+      - TASKS_SERVICE_HOST=tasks-service
+      - TASKS_SERVICE_PORT=3003
+    healthcheck:
+      test:
+        ["CMD", "wget", "--spider", "-q", "http://localhost:3001/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      tasks-service:
+        condition: service_healthy
+    networks:
+      - challenge-network
+
+  # -----------------------------------------------------------------------------
+  # AUTH SERVICE (TCP + HTTP Health)
+  # -----------------------------------------------------------------------------
+  auth-service:
+    container_name: auth-service
+    build:
+      context: .
+      dockerfile: ./apps/auth-service/Dockerfile
+      target: development
+    ports:
+      - "3002:3002"
+      - "3012:3012"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - TCP_PORT=3002
+      - HTTP_PORT=3012
+      - JWT_SECRET=jungle_super_secret_key_123
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=password
+      - DB_NAME=challenge_db
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3012/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - challenge-network
+    command: sh -c "npm run migration:run --workspace=@challenge/auth-service && npm run start:dev --workspace=@challenge/auth-service"
+
+  # -----------------------------------------------------------------------------
+  # TASKS SERVICE (TCP + HTTP Health + RabbitMQ)
+  # -----------------------------------------------------------------------------
+  tasks-service:
+    container_name: tasks-service
+    build:
+      context: .
+      dockerfile: ./apps/tasks-service/Dockerfile
+      target: development
+    ports:
+      - "3003:3003"
+      - "3013:3013"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - TCP_PORT=3003
+      - HTTP_PORT=3013
+      - RABBITMQ_URI=amqp://admin:admin@rabbitmq:5672
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=password
+      - DB_NAME=challenge_db
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3013/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - challenge-network
+    command: sh -c "npm run migration:run --workspace=@challenge/tasks-service && npm run start:dev --workspace=@challenge/tasks-service"
+
+  # -----------------------------------------------------------------------------
+  # NOTIFICATIONS SERVICE (HTTP/WS + RabbitMQ)
+  # -----------------------------------------------------------------------------
+  notifications-service:
+    container_name: notifications-service
+    build:
+      context: .
+      dockerfile: ./apps/notifications-service/Dockerfile
+      target: development
+    ports:
+      - "3004:3004"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - JWT_SECRET=jungle_super_secret_key_123
+      - RABBITMQ_URI=amqp://admin:admin@rabbitmq:5672
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=password
+      - DB_NAME=challenge_db
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3004/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - challenge-network
+    command: sh -c "npm run migration:run --workspace=@challenge/notifications-service && npm run start:dev --workspace=@challenge/notifications-service"
+
+  # -----------------------------------------------------------------------------
+  # INFRA (Database & Message Broker)
+  # -----------------------------------------------------------------------------
+  db:
+    image: postgres:17.5-alpine3.21
+    container_name: db
+    ports:
+      - "5432:5432"
+    networks:
+      - challenge-network
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: challenge_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq2
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - challenge-network
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes: ["rabbitmq_data:/var/lib/rabbitmq"]
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+networks:
+  challenge-network:
+    driver: bridge

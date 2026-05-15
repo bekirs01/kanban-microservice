@@ -1,0 +1,51 @@
+---
+description: Core standards—language, comments, stability, architecture, hackathon polish
+alwaysApply: true
+---
+
+# Project rules (engineering)
+
+Follow these constraints for all future work unless the user overrides them explicitly.
+
+## Language (code and repo)
+
+- **All source code** must be written in **English**.
+- Use **English** for: identifiers (variables, functions, classes), file and folder names, commit messages, internal developer docs, README technical sections, PR descriptions, and any **developer-facing** strings (logs intended for engineers, codegen output labels).
+- **Do not translate** architectural terms or established API/domain names purely for readability; rename only when the user requests it or when it fixes consistency.
+
+## Comments
+
+- **Do not add code comments** unless the user explicitly asks for comments.
+- **Do not** add unnecessary comment lines, placeholder comments (`TODO`, `FIXME`, `NOTE` blocks), or explanations of obvious logic.
+- If the user requests comments: keep them minimal, factual, and in **English**.
+
+## Scope of changes
+
+- **No random refactors.** Change only what the task requires.
+- **Do not** rewrite whole files unless there is no smaller safe alternative.
+- Prefer **small, controlled, diff-friendly** edits that reviewers can reason about quickly.
+- **Preserve the current architecture** unless there is a clear, justified reason to improve it and the user agrees (or the task mandates it).
+
+## Non-regression gates (critical)
+
+Unless the task explicitly includes fixing a bug in that area, **do not break**:
+
+- Authentication (JWT, refresh flow, guarded routes).
+- Frontend routing / navigation.
+- API calls from the UI and gateway wiring.
+- **Real-time** behavior (notifications / WebSockets / related consumers).
+- **Kanban**: board behavior, drag-and-drop semantics, optimistic updates where present.
+- **Tasks**: creation, editing, deletion, column/status movement.
+- Notification creation, delivery, and read/unread UX expected by users.
+
+Before merging or handing off work, mentally verify these flows remain intact; if risky, narrow the change or add/adjust automated tests when they already exist—**without large refactors**.
+
+## Dependencies
+
+- **Do not** add unused packages.
+- **Do not** install libraries without a short, concrete justification (problem solved, alternatives considered).
+- Prefer **simple, stable, production-realistic** solutions suitable for a **hackathon jury demo** (polished UX, coherent copy, predictable behavior).
+
+## Demo quality
+
+- The product should remain **professional**: consistent spacing and typography where UI is touched; no sloppy debug leftovers in user-visible paths unless explicitly debugging with the user.
