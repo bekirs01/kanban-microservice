@@ -15,4 +15,4 @@ RUN npm run build --workspace=@challenge/tasks-service
 
 EXPOSE 3003 3013
 
-CMD ["npm", "run", "dev", "--workspace=@challenge/tasks-service"]
+CMD ["sh", "-c", "npm run migration:run --workspace=@challenge/tasks-service && npm run start:prod --workspace=@challenge/tasks-service"]

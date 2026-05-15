@@ -15,4 +15,4 @@ RUN npm run build --workspace=@challenge/notifications-service
 
 EXPOSE 3004
 
-CMD ["npm", "run", "dev", "--workspace=@challenge/notifications-service"]
+CMD ["sh", "-c", "npm run migration:run --workspace=@challenge/notifications-service && npm run start:prod --workspace=@challenge/notifications-service"]

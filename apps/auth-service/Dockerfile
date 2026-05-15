@@ -15,4 +15,4 @@ RUN npm run build --workspace=@challenge/auth-service
 
 EXPOSE 3002 3012
 
-CMD ["npm", "run", "dev", "--workspace=@challenge/auth-service"]
+CMD ["sh", "-c", "npm run migration:run --workspace=@challenge/auth-service && npm run start:prod --workspace=@challenge/auth-service"]

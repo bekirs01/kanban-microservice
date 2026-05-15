@@ -31,12 +31,19 @@ async function bootstrap() {
       jsonDocumentUrl: "api/json"
     });
 
+    const defaultOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:5174',
+    ];
+    const envOrigins = (process.env.CORS_ORIGINS || '')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+    const allowAll = envOrigins.includes('*');
+
     app.enableCors({
-      origin: [
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'http://localhost:5174',
-      ],
+      origin: allowAll ? true : [...defaultOrigins, ...envOrigins],
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       credentials: true,
       allowedHeaders: 'Content-Type, Accept, Authorization',
