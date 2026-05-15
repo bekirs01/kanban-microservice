@@ -15,6 +15,7 @@
 - [x] Identify real-time technology
 - [x] Identify queue/message broker technology
 - [x] Check how to run the project locally
+- [x] Verify and document PostgreSQL Docker Compose wiring (see `DATABASE_CONNECTION_REPORT.md`)
 
 ## 2. Kanban Board
 
