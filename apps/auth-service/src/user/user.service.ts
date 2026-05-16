@@ -237,5 +237,6 @@ export class UserService {
     }
 
     await this.userRepository.delete(payload.targetUserId);
+    return { ok: true as const };
   }
 }

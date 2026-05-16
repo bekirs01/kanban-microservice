@@ -63,6 +63,7 @@ export function useWebSocket() {
       void queryClient
         .invalidateQueries({ predicate: isTaskRelatedQuery })
         .then(() => {
+          void queryClient.invalidateQueries({ queryKey: ["usersByIds"] });
           void queryClient.refetchQueries({
             type: "active",
             predicate: isTaskRelatedQuery,

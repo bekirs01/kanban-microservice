@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "@/i18n/useTranslation";
 import { canDragTaskOnBoard } from "@/lib/rbac";
+import { isTaskOverdue } from "@/lib/dashboardDerived";
 import { useUpdateTask } from "@/hooks/useTasks";
 import { useUsersByIds } from "@/hooks/useUsersByIds";
 import { cn } from "@/lib/utils";
@@ -185,7 +186,7 @@ function KanbanColumn({
           isOver && "bg-muted/60 border-primary/10 ring-2 ring-primary/5",
         )}
       >
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 max-h-[min(34rem,calc(100vh-17rem))] overflow-y-auto overscroll-y-contain pr-1">
           {tasks.length === 0 ? (
             <p className="text-xs text-muted-foreground px-2 py-6 text-center">
               {t("board.emptyColumn")}
@@ -267,11 +268,21 @@ function TaskCard({
   isDraggable?: boolean;
 }) {
   const { t, dateFnsLocale } = useTranslation();
+  const overdue = isTaskOverdue(task);
+  const progressPct =
+    task.status === "DONE"
+      ? 100
+      : task.status === "REVIEW"
+        ? 78
+        : task.status === "IN_PROGRESS"
+          ? 45
+          : 12;
 
   return (
     <Card
       className={cn(
         "hover:shadow-md transition-all duration-200 border-border/50 group bg-card",
+        overdue && "border-l-4 border-l-destructive",
         isDraggable &&
           !isOverlay &&
           "cursor-grab hover:shadow-md transition-all duration-200",
@@ -283,16 +294,26 @@ function TaskCard({
       )}
     >
       <CardHeader className="pb-3 space-y-2.5">
-        <div className="flex justify-between items-start">
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-[10px] font-medium border px-2 py-0.5 rounded-md",
-              PRIORITY_STYLES[task.priority],
-            )}
-          >
-            {t(priorityLabelKey(task.priority))}
-          </Badge>
+        <div className="flex justify-between items-start gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] font-medium border px-2 py-0.5 rounded-md",
+                PRIORITY_STYLES[task.priority],
+              )}
+            >
+              {t(priorityLabelKey(task.priority))}
+            </Badge>
+            {overdue ? (
+              <Badge
+                variant="outline"
+                className="text-[10px] border-destructive/50 text-destructive"
+              >
+                {t("dashboard.overdue")}
+              </Badge>
+            ) : null}
+          </div>
         </div>
 
         <h4 className="text-sm font-semibold leading-snug text-foreground/90 group-hover:text-primary transition-colors">
@@ -305,6 +326,13 @@ function TaskCard({
           {task.description || t("task.noDescriptionFallback")}
         </p>
 
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary/85 transition-all"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+
         <div className="flex items-center justify-between pt-2 border-t border-border/40 mt-2">
           <div className="flex items-center text-xs text-muted-foreground/80 gap-1.5">
             <Calendar className="w-3.5 h-3.5" />
@@ -313,11 +341,17 @@ function TaskCard({
                 ? format(new Date(task.deadline), "dd MMM yy", {
                     locale: dateFnsLocale,
                   })
-                : "--"}
+                : t("dashboard.noDeadlineShort")}
             </span>
           </div>
 
-          <AssigneesStack ids={task.assignees || []} />
+          {task.assignees?.length ? (
+            <AssigneesStack ids={task.assignees} />
+          ) : (
+            <span className="text-[10px] text-muted-foreground">
+              {t("dashboard.unassigned")}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>

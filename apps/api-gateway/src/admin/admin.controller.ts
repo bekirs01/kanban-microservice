@@ -27,6 +27,7 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { firstValueFrom } from "rxjs";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 
@@ -77,11 +78,13 @@ export class AdminController {
   @ApiOperation({ summary: "Delete user account (ADMIN only)" })
   @ApiParam({ name: "id", description: "User id (UUID)" })
   @ApiResponse({ status: 204 })
-  deleteUser(@Req() req: any, @Param("id", ParseUUIDPipe) id: string) {
-    return this.authClient.send("admin.users.delete", {
-      requesterUserId: req.user.id,
-      targetUserId: id,
-    });
+  async deleteUser(@Req() req: any, @Param("id", ParseUUIDPipe) id: string) {
+    await firstValueFrom(
+      this.authClient.send("admin.users.delete", {
+        requesterUserId: req.user.id,
+        targetUserId: id,
+      }),
+    );
   }
 
   @Get("registration-requests")
