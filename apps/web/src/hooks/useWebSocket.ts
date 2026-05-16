@@ -1,7 +1,9 @@
 import type { TranslateFn } from "@/i18n/types";
+import { TASKS_QUERY_ROOT } from "@/hooks/useTasks";
 import { useTranslation } from "@/i18n/useTranslation";
 import { authService } from "@/services/auth.service";
 import type { ResponseNotificationDto } from "@challenge/types";
+import type { Query } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +13,16 @@ import { toast } from "sonner";
 const SOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL || "http://localhost:3004";
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 3000;
+const BOARD_SYNC_DEBOUNCE_MS = 200;
+
+function isTaskRelatedQuery(query: Query) {
+  const key = query.queryKey;
+  return (
+    Array.isArray(key) &&
+    key.length > 0 &&
+    (key[0] === TASKS_QUERY_ROOT || key[0] === "task")
+  );
+}
 
 export function useWebSocket() {
   const { t } = useTranslation();
@@ -22,10 +34,42 @@ export function useWebSocket() {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const boardSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const getStoredUserId = (): string | null => {
+    try {
+      const raw = localStorage.getItem("user");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { id?: string };
+      return parsed?.id ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const shouldMuteToastForActor = (actorId?: string) =>
+    !!(actorId && getStoredUserId() === actorId);
+
+  const scheduleBoardSync = () => {
+    if (boardSyncTimerRef.current) {
+      clearTimeout(boardSyncTimerRef.current);
+    }
+    boardSyncTimerRef.current = setTimeout(() => {
+      boardSyncTimerRef.current = null;
+      void queryClient
+        .invalidateQueries({ predicate: isTaskRelatedQuery })
+        .then(() => {
+          void queryClient.refetchQueries({
+            type: "active",
+            predicate: isTaskRelatedQuery,
+          });
+        });
+    }, BOARD_SYNC_DEBOUNCE_MS);
+  };
 
   const connectWebSocket = () => {
     const token = localStorage.getItem("accessToken");
@@ -116,28 +160,57 @@ export function useWebSocket() {
       },
     );
 
+    socketRef.current.on("board:changed", () => {
+      scheduleBoardSync();
+    });
+
+    socketRef.current.on("task:moved", () => {
+      scheduleBoardSync();
+    });
+
     socketRef.current.on("task:created", (data: ResponseNotificationDto) => {
-      toast.success(tRef.current("notification.taskCreated"), {
-        description: data.content,
-      });
+      scheduleBoardSync();
+      if (!shouldMuteToastForActor(data.actorId)) {
+        toast.success(tRef.current("notification.taskCreated"), {
+          description: data.content,
+        });
+      }
     });
 
     socketRef.current.on("task:updated", (data: ResponseNotificationDto) => {
-      toast.info(tRef.current("notification.taskUpdated"), {
-        description: data.content,
-      });
+      scheduleBoardSync();
+      if (!shouldMuteToastForActor(data.actorId)) {
+        toast.info(tRef.current("notification.taskUpdated"), {
+          description: data.content,
+        });
+      }
+    });
+
+    socketRef.current.on("task:deleted", (data: ResponseNotificationDto) => {
+      scheduleBoardSync();
+      if (!shouldMuteToastForActor(data.actorId)) {
+        toast.info(tRef.current("notification.taskDeleted"), {
+          description: data.content,
+        });
+      }
     });
 
     socketRef.current.on("task:assigned", (data: ResponseNotificationDto) => {
-      toast.info(tRef.current("notification.taskAssigned"), {
-        description: data.content,
-      });
+      scheduleBoardSync();
+      if (!shouldMuteToastForActor(data.actorId)) {
+        toast.info(tRef.current("notification.taskAssigned"), {
+          description: data.content,
+        });
+      }
     });
 
     socketRef.current.on("comment:new", (data: ResponseNotificationDto) => {
-      toast.info(tRef.current("notification.commentAdded"), {
-        description: data.content,
-      });
+      scheduleBoardSync();
+      if (!shouldMuteToastForActor(data.actorId)) {
+        toast.info(tRef.current("notification.commentAdded"), {
+          description: data.content,
+        });
+      }
       try {
         queryClient.invalidateQueries({ queryKey: ["taskHistory"] });
       } catch (e) {
@@ -172,6 +245,10 @@ export function useWebSocket() {
     connectWebSocket();
 
     return () => {
+      if (boardSyncTimerRef.current) {
+        clearTimeout(boardSyncTimerRef.current);
+        boardSyncTimerRef.current = null;
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }

@@ -12,9 +12,19 @@ export class NotificationsController {
     await this.service.notifyTaskAssigned(data);
   }
 
+  @EventPattern('task.created')
+  async handleTaskCreated(@Payload() data: TaskNotificationPayload) {
+    await this.service.notifyTaskCreated(data);
+  }
+
   @EventPattern('task.updated')
   async handleTaskUpdate(@Payload() data: TaskNotificationPayload) {
     await this.service.notifyTaskUpdated(data);
+  }
+
+  @EventPattern('task.deleted')
+  async handleTaskDeleted(@Payload() data: TaskNotificationPayload) {
+    await this.service.notifyTaskDeleted(data);
   }
 
   @EventPattern('task.comment')

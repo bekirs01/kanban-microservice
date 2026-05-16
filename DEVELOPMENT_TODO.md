@@ -41,24 +41,24 @@
 ## 4. Real-Time Synchronization
 
 - [x] Detect current real-time implementation
-- [ ] Sync task creation
-- [ ] Sync task updates
-- [ ] Sync task movement
-- [ ] Sync task deletion
-- [ ] Show connection status
+- [x] Sync task creation
+- [x] Sync task updates
+- [x] Sync task movement
+- [x] Sync task deletion
+- [x] Show connection status
 
 ## 5. Event-Driven Logic
 
-- [ ] Emit task created event
-- [ ] Emit task updated event
-- [ ] Emit task moved event
-- [ ] Emit task deleted event
-- [ ] Store or process events if required
+- [x] Emit task created event
+- [x] Emit task updated event
+- [x] Emit task moved event
+- [x] Emit task deleted event
+- [x] Store or process events if required
 
 ## 6. Automation
 
-- [ ] Add notification when task is created
-- [ ] Add notification when task is moved
+- [x] Add notification when task is created
+- [x] Add notification when task is moved
 - [ ] Add rule-based task movement
 - [ ] Add tag-based flags
 - [ ] Add deadline-based reactions
@@ -76,8 +76,8 @@
 
 - [ ] Show system notifications
 - [ ] Show user notifications
-- [ ] Send real-time notifications
-- [ ] Avoid duplicate notifications
+- [x] Send real-time notifications (board + toasts via WebSocket)
+- [x] Avoid duplicate notifications (actor-based toast mute for own actions)
 
 ## 9. Internationalization
 

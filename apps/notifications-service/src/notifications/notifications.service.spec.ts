@@ -1,4 +1,4 @@
-import { TaskNotificationPayload } from '@challenge/types';
+import { ActionType, TaskNotificationPayload } from '@challenge/types';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -18,6 +18,8 @@ describe('NotificationsService', () => {
 
   const mockWsGateway = {
     notifyUser: jest.fn(),
+    emitBoardChanged: jest.fn(),
+    emitTaskMoved: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -52,14 +54,18 @@ describe('NotificationsService', () => {
 
   describe('notifyTaskAssigned', () => {
     const mockPayload: TaskNotificationPayload = {
+      actorId: 'assigner-1',
+      creatorId: 'creator-1',
+      timestamp: '2026-01-01T00:00:00.000Z',
       recipients: ['user-1', 'user-2'],
       task: {
         id: 'task-123',
         title: 'Tarefa de Teste',
         status: 'TODO',
-        assigneeIds: [],
+        assigneeIds: ['user-1', 'user-2'],
+        creatorId: 'creator-1',
       },
-      action: 'ASSIGN',
+      action: ActionType.ASSIGNED,
     };
 
     const mockNotification = {
@@ -97,14 +103,17 @@ describe('NotificationsService', () => {
       await service.notifyTaskAssigned(mockPayload);
 
       expect(mockWsGateway.notifyUser).toHaveBeenCalledTimes(2);
-      expect(mockWsGateway.notifyUser).toHaveBeenCalledWith('user-1', 'task:updated', {
+      expect(mockWsGateway.notifyUser).toHaveBeenCalledWith('user-1', 'task:assigned', expect.objectContaining({
         content: 'Você foi atribuído à tarefa: Tarefa de Teste',
         title: 'Nova Atribuição',
-      });
-      expect(mockWsGateway.notifyUser).toHaveBeenCalledWith('user-2', 'task:updated', {
+        actorId: 'assigner-1',
+        taskId: 'task-123',
+      }));
+      expect(mockWsGateway.notifyUser).toHaveBeenCalledWith('user-2', 'task:assigned', expect.objectContaining({
         content: 'Você foi atribuído à tarefa: Tarefa de Teste',
         title: 'Nova Atribuição',
-      });
+      }));
+      expect(mockWsGateway.emitBoardChanged).toHaveBeenCalled();
     });
 
     it('deve lidar com um único destinatário', async () => {
@@ -125,14 +134,16 @@ describe('NotificationsService', () => {
 
     it('deve criar notificação com conteúdo correto baseado no título da tarefa', async () => {
       const customPayload: TaskNotificationPayload = {
+        ...mockPayload,
         recipients: ['user-1'],
         task: {
           id: 'task-456',
           title: 'Implementar Feature X',
           assigneeIds: [],
           status: 'IN_PROGRESS',
+          creatorId: 'creator-x',
         },
-        action: 'ASSIGN',
+        action: ActionType.ASSIGNED,
       };
 
       mockNotificationRepository.create.mockReturnValue(mockNotification);

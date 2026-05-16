@@ -19,13 +19,54 @@ export class TaskService {
     private readonly commentService: CommentService
   ) { }
 
+  private buildTaskNotifyShape(task: Task) {
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      assigneeIds: task.assignees || [],
+      creatorId: task.creatorId,
+      priority: task.priority,
+      deadline: task.deadline instanceof Date ? task.deadline.toISOString() : String(task.deadline),
+    };
+  }
+
   async create(dto: CreateTaskPayload): Promise<Task> {
-    return await this.taskRepository.save(dto)
+    const saved = await this.taskRepository.save(dto);
+    const recipientSet = new Set((saved.assignees || []).filter(Boolean));
+    recipientSet.delete(saved.creatorId);
+    const recipients = [...recipientSet];
+    const snapshot = this.buildTaskNotifyShape(saved);
+    const payload: TaskNotificationPayload = {
+      actorId: saved.creatorId,
+      creatorId: saved.creatorId,
+      timestamp: new Date().toISOString(),
+      recipients,
+      task: snapshot,
+      action: ActionType.CREATED,
+    };
+    this.notificationClient.emit("task.created", payload);
+    return saved;
   }
 
   async delete(data: { taskId: string, userId: string }): Promise<DeleteResult> {
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
     if (!task) throw new TaskNotFoundRpcException;
+
+    const recipientSet = new Set([task.creatorId, ...(task.assignees || [])].filter(Boolean));
+    recipientSet.delete(data.userId);
+    const recipients = [...recipientSet];
+    const snapshot = this.buildTaskNotifyShape(task);
+    const notifyPayload: TaskNotificationPayload = {
+      actorId: data.userId,
+      creatorId: task.creatorId,
+      timestamp: new Date().toISOString(),
+      recipients,
+      task: snapshot,
+      action: ActionType.DELETE,
+    };
+    this.notificationClient.emit("task.deleted", notifyPayload);
 
     await this.historyRepository.save({
       action: ActionType.DELETE,
@@ -61,16 +102,20 @@ export class TaskService {
   }
 
   async getAll(pagination: PaginationQueryPayload): Promise<PaginationResultDto<Task[]>> {
-    const { limit = 10, page = 1, userId } = pagination;
+    const { limit = 10, page = 1, userId, sharedBoard } = pagination;
 
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.taskRepository
-      .createQueryBuilder("task")
-      .where("task.creatorId = :userId", { userId })
-      .orWhere("task.assignees ILIKE :userIdPattern", { userIdPattern: `%${userId}%` })
-      .skip(skip)
-      .take(limit);
+      .createQueryBuilder("task");
+
+    if (!sharedBoard) {
+      queryBuilder
+        .where("task.creatorId = :userId", { userId })
+        .orWhere("task.assignees ILIKE :userIdPattern", { userIdPattern: `%${userId}%` });
+    }
+
+    queryBuilder.skip(skip).take(limit);
 
     const [tasks, totalTasks] = await queryBuilder.getManyAndCount();
 
@@ -119,13 +164,12 @@ export class TaskService {
       });
 
       const payload: TaskNotificationPayload = {
+        actorId: data.assignerId,
+        creatorId: savedTask.creatorId,
+        timestamp: new Date().toISOString(),
         recipients: [data.assigneeId],
         task: {
-          id: savedTask.id,
-          assigneeIds: savedTask.assignees,
-          status: savedTask.status,
-          title: savedTask.title,
-          description: savedTask.description,
+          ...this.buildTaskNotifyShape(savedTask),
         },
         action: ActionType.ASSIGNED
       };
@@ -160,13 +204,12 @@ export class TaskService {
       });
 
       const payload: TaskNotificationPayload = {
+        actorId: data.assignerId,
+        creatorId: savedTask.creatorId,
+        timestamp: new Date().toISOString(),
         recipients: [data.assigneeId],
         task: {
-          id: savedTask.id,
-          assigneeIds: savedTask.assignees,
-          status: savedTask.status,
-          title: savedTask.title,
-          description: savedTask.description,
+          ...this.buildTaskNotifyShape(savedTask),
         },
         action: ActionType.ASSIGNED
       };
@@ -205,15 +248,11 @@ export class TaskService {
     recipients = Array.from(new Set(recipients)).filter(r => !!r && r !== data.authorId);
 
     const payload: TaskNotificationPayload = {
+      actorId: data.authorId,
+      creatorId: task.creatorId,
+      timestamp: new Date().toISOString(),
       recipients,
-      task: {
-        id: task.id,
-        title: task.title,    // Define a ação baseada no que mudou
-
-        status: task.status,
-        description: task.description,
-        assigneeIds: recipients,
-      },
+      task: this.buildTaskNotifyShape(task),
       comment: {
         authorId: data.authorId,
         content: data.content
@@ -372,20 +411,15 @@ export class TaskService {
       task.creatorId
     ].filter((userId) => userId !== authorId);
 
-    if (recipients.length === 0) return;
-
     const action = (changes.new as any).status ? ActionType.STATUS_CHANGE : ActionType.UPDATE;
 
     const payload: TaskNotificationPayload = {
+      actorId: authorId,
+      creatorId: task.creatorId,
+      timestamp: new Date().toISOString(),
       recipients,
-      task: {
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        description: task.description,
-        assigneeIds: task.assignees || []
-      },
-      action
+      task: this.buildTaskNotifyShape(task),
+      action,
     };
 
     this.notificationClient.emit("task.updated", payload);

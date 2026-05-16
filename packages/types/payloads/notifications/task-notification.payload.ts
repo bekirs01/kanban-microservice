@@ -1,6 +1,9 @@
 import { ActionType } from "../../enums/index.js";
 
 export interface TaskNotificationPayload {
+  actorId: string;
+  creatorId?: string;
+  timestamp?: string;
   recipients: string[];
   task: {
     id: string;
@@ -8,6 +11,9 @@ export interface TaskNotificationPayload {
     description?: string;
     status: string;
     assigneeIds: string[];
+    creatorId?: string;
+    priority?: string;
+    deadline?: string;
   };
   comment?: {
     content: string;

@@ -8,9 +8,11 @@ import type {
 } from "@challenge/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+export const TASKS_QUERY_ROOT = "tasks";
+
 export function useTasks(filters?: PaginationQueryDto) {
   return useQuery({
-    queryKey: ["tasks", filters],
+    queryKey: [TASKS_QUERY_ROOT, filters],
     queryFn: () => tasksService.getTasks(filters),
   });
 }
@@ -29,7 +31,11 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: (data: CreateTaskDto) => tasksService.createTask(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          q.queryKey[0] === TASKS_QUERY_ROOT,
+      });
     },
   });
 }
@@ -41,13 +47,13 @@ export function useUpdateTask() {
     mutationFn: ({ id, data }: { id: string; data: UpdateTaskDto }) =>
       tasksService.updateTask(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task"] });
-      try {
-        queryClient.invalidateQueries({ queryKey: ["taskHistory"] });
-      } catch (e) {
-        queryClient.invalidateQueries();
-      }
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          (q.queryKey[0] === TASKS_QUERY_ROOT ||
+            q.queryKey[0] === "task" ||
+            q.queryKey[0] === "taskHistory"),
+      });
     },
   });
 }
@@ -58,7 +64,11 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: (id: string) => tasksService.deleteTask(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          q.queryKey[0] === TASKS_QUERY_ROOT,
+      });
     },
   });
 }
@@ -70,9 +80,13 @@ export function useAssignTask() {
     mutationFn: ({ id, data }: { id: string; data: AssignTaskDto }) =>
       tasksService.assignUser(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task"] });
-      queryClient.invalidateQueries({ queryKey: ["taskHistory"] });
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          (q.queryKey[0] === TASKS_QUERY_ROOT ||
+            q.queryKey[0] === "task" ||
+            q.queryKey[0] === "taskHistory"),
+      });
     },
   });
 }
@@ -84,13 +98,13 @@ export function useUnassignTask() {
     mutationFn: ({ id, data }: { id: string; data: AssignTaskDto }) =>
       tasksService.unassignUser(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task"] });
-      try {
-        queryClient.invalidateQueries({ queryKey: ["taskHistory"] });
-      } catch (e) {
-        queryClient.invalidateQueries();
-      }
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          (q.queryKey[0] === TASKS_QUERY_ROOT ||
+            q.queryKey[0] === "task" ||
+            q.queryKey[0] === "taskHistory"),
+      });
     },
   });
 }

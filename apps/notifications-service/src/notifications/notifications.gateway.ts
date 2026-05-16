@@ -1,4 +1,4 @@
-import { ResponseNotificationDto } from '@challenge/types';
+import type { KanbanBoardChangeDto, ResponseNotificationDto, TaskMovedSocketDto } from '@challenge/types';
 import { JwtService } from '@nestjs/jwt';
 import { OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Logger } from 'nestjs-pino';
@@ -52,5 +52,13 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   notifyUser(userId: string, event: string, payload: ResponseNotificationDto) {
     this.server.to(`user_${userId}`).emit(event, payload);
+  }
+
+  emitBoardChanged(payload: KanbanBoardChangeDto) {
+    this.server.emit('board:changed', payload);
+  }
+
+  emitTaskMoved(payload: TaskMovedSocketDto) {
+    this.server.emit('task:moved', payload);
   }
 }

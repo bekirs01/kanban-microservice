@@ -30,6 +30,7 @@ export function KanbanPage() {
   const { data: tasksData, isLoading } = useTasks({
     page: 1,
     limit: 100,
+    sharedBoard: true,
   });
 
   const tasks = tasksData?.items || [];

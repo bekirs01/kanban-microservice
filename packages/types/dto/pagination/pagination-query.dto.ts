@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsNumber, IsOptional, Min } from 'class-validator';
 
 export class PaginationQueryDto {
   @IsOptional()
@@ -13,6 +13,13 @@ export class PaginationQueryDto {
   @IsNumber()
   @Min(1)
   limit?: number = 10;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === true || value === 'true',
+  )
+  @IsBoolean()
+  sharedBoard?: boolean;
 }
 
 export interface PaginationQueryPayload extends PaginationQueryDto {
