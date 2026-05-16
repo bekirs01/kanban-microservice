@@ -79,6 +79,22 @@ export class AdminController {
   @ApiParam({ name: "id", description: "User id (UUID)" })
   @ApiResponse({ status: 204 })
   async deleteUser(@Req() req: any, @Param("id", ParseUUIDPipe) id: string) {
+    await this.performAdminDeleteUser(req, id);
+  }
+
+  @Post("users/:id/delete")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary:
+      "Delete user account via POST (ADMIN only; use when DELETE is blocked by a proxy)",
+  })
+  @ApiParam({ name: "id", description: "User id (UUID)" })
+  @ApiResponse({ status: 204 })
+  async deleteUserPost(@Req() req: any, @Param("id", ParseUUIDPipe) id: string) {
+    await this.performAdminDeleteUser(req, id);
+  }
+
+  private async performAdminDeleteUser(req: any, id: string) {
     await firstValueFrom(
       this.authClient.send("admin.users.delete", {
         requesterUserId: req.user.id,
