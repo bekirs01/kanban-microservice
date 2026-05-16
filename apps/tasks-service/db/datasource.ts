@@ -4,6 +4,9 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 
 config({ path: resolve(process.cwd(), '.env') });
 
+const dbSsl =
+  process.env.DB_SSL === "true" || process.env.DB_SSL === "1";
+
 export const dataSourceOptions: DataSourceOptions = {
   type: "postgres",
   host: process.env.DB_HOST || 'localhost',
@@ -11,6 +14,7 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DB_USER || 'postgres',
   password: String(process.env.DB_PASS || ''),
   database: process.env.DB_NAME || 'postgres',
+  ssl: dbSsl ? { rejectUnauthorized: false } : false,
   schema: "task_service",
   entities: ['dist/**/*.entity.js'],
   migrations: ['dist/db/migrations/*.js'],

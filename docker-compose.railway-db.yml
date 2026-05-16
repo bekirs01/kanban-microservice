@@ -1,0 +1,47 @@
+services:
+  auth-service:
+    depends_on:
+      db: !reset null
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${RAILWAY_DB_HOST}
+      DB_PORT: ${RAILWAY_DB_PORT}
+      DB_USER: ${RAILWAY_DB_USER}
+      DB_PASS: ${RAILWAY_DB_PASS}
+      DB_NAME: ${RAILWAY_DB_NAME}
+      DB_SSL: ${DB_SSL:-false}
+      JWT_SECRET: ${JWT_SECRET:-jungle_super_secret_key_123}
+
+  tasks-service:
+    depends_on:
+      db: !reset null
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${RAILWAY_DB_HOST}
+      DB_PORT: ${RAILWAY_DB_PORT}
+      DB_USER: ${RAILWAY_DB_USER}
+      DB_PASS: ${RAILWAY_DB_PASS}
+      DB_NAME: ${RAILWAY_DB_NAME}
+      DB_SSL: ${DB_SSL:-false}
+      RABBITMQ_URI: ${RABBITMQ_URI:-amqp://admin:admin@rabbitmq:5672}
+
+  notifications-service:
+    depends_on:
+      db: !reset null
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${RAILWAY_DB_HOST}
+      DB_PORT: ${RAILWAY_DB_PORT}
+      DB_USER: ${RAILWAY_DB_USER}
+      DB_PASS: ${RAILWAY_DB_PASS}
+      DB_NAME: ${RAILWAY_DB_NAME}
+      DB_SSL: ${DB_SSL:-false}
+      JWT_SECRET: ${JWT_SECRET:-jungle_super_secret_key_123}
+      RABBITMQ_URI: ${RABBITMQ_URI:-amqp://admin:admin@rabbitmq:5672}
+
+  api-gateway:
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-jungle_super_secret_key_123}

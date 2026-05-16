@@ -2,6 +2,8 @@
 
 This document summarizes how PostgreSQL is wired in this repository from configuration and Docker Compose definitions. Runtime health was not executed as part of this write-up.
 
+**Optional:** To point local Docker backends at **Railway PostgreSQL** while keeping the default stack, see **`LOCAL_WITH_RAILWAY_DB.md`**, **`docker-compose.railway-db.yml`**, and **`.env.railway.example`**.
+
 ---
 
 ## 1. Current database architecture
@@ -20,23 +22,28 @@ This document summarizes how PostgreSQL is wired in this repository from configu
 | Compose service name | `db` |
 | Image | `postgres:17.5-alpine3.21` |
 | Container name | `db` |
-| Host port mapping | `5432:5432` |
+| Host port mapping | `5433:5432` (host **5433** → container **5432**) |
 | Init script volume | `./init.sql` mounted to `/docker-entrypoint-initdb.d/init.sql` (runs only on fresh data volume) |
 | Data persistence | Named volume `postgres_data` |
 | Health check | `pg_isready -U postgres` |
+
+**Compose network vs DBeaver (host):**
+
+- Backend services keep **`DB_HOST=db`** and **`DB_PORT=5432`** — they connect to PostgreSQL inside the Docker network at **`db:5432`** (internal container port is unchanged).
+- **DBeaver** (or any SQL client running on your machine) uses **host `localhost`**, **port `5433`**, DB **`challenge_db`**, user **`postgres`**, password **`password`** (`docker-compose.yml` publishes `5433:5432` to avoid clashes with another local Postgres on 5432).
 
 ---
 
 ## 3. Database name, user, password, host, and port
 
-| Variable / role | In Docker Compose (`db` service defaults) | In-app env (Compose injects into DB-using services) |
-|-----------------|--------------------------------------------|--------------------------------------------------------|
+| Variable / role | `db` container / Postgres | In-app env (Compose injects into DB-using backends) |
+|-----------------|---------------------------|-------------------------------------------------------|
 | Database | `challenge_db` (`POSTGRES_DB`) | `DB_NAME=challenge_db` |
 | User | `postgres` (`POSTGRES_USER`) | `DB_USER=postgres` |
 | Password | `password` (`POSTGRES_PASSWORD`) | `DB_PASS=password` |
-| Host (inside Compose network) | N/A | `DB_HOST=db` |
-| Host (from your Mac when port is published) | `localhost` | `DB_HOST=localhost` if you run Nest on the host |
-| Port | `5432` | `DB_PORT=5432` |
+| Host (inside Compose network) | Docker DNS name **`db`** | `DB_HOST=db` (**unchanged** — backends connect to **`db:5432`**) |
+| Port (**inside container / Compose**) | Postgres listens on **5432** | `DB_PORT=5432` |
+| Host + port from **your machine** (DBeaver, `psql` on host → Docker-published port) | `localhost` (**or** `127.0.0.1`), port **`5433`** — see `5433:5432` mapping in Compose | Nest run **on the host** targeting Docker Postgres → `DB_HOST=localhost`, **`DB_PORT=5433`** |
 
 **Security note:** These are development defaults. Do not reuse them in production without rotation and secrets management.
 
@@ -85,7 +92,7 @@ Shared pattern: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`.
 If `DB_*` are unset, datasource files fall back roughly to:
 
 - `host`: `localhost`
-- `port`: `5432`
+- `port`: `5432` (**host OS → Postgres in Compose**: publish is **`5433:5432`**, so from the laptop use **`localhost:5433`**, not 5432, unless Postgres is elsewhere.)
 - `username`: `postgres`
 - `password`: empty string (`''`)
 - `database`: `postgres` (differs from `challenge_db`; **always set env in Docker Compose, which already does.**)
@@ -135,7 +142,7 @@ From configuration review:
 - The `db` service defines **health checks**, `POSTGRES_*` defaults, **`init.sql`**, and **`depends_on`** from consumers with `condition: service_healthy` where applicable.
 - This is **the intended hackathon-local path**: Postgres comes up first; services wait; migrations then apps start.
 
-Operational success still depends on **Docker/Colima running**, free **host port `5432`**, and sufficient resources for first-time image pull and build.
+Operational success still depends on **Docker/Colima running**, a free **published host port for Postgres (`5433` by default in this compose file)**, and sufficient resources for first-time image pull and build.
 
 ---
 
@@ -206,10 +213,10 @@ Each service uses schema-qualified tables; migrations table name is `migrations`
 | Symptom | Likely cause | Fix |
 |---------|---------------|-----|
 | `Cannot connect to the Docker daemon` | Docker / Colima not running | `colima start` or open Docker Desktop; confirm `docker info` works |
-| `connection refused` to `5432` | `db` not up or wrong host | Ensure `docker compose ps` shows `db` healthy; use `DB_HOST=db` in Compose, `localhost` on host |
+| `connection refused` from **host** tooling | Postgres not reachable on expected host port | Compose maps **`5433` → container `5432`**. Use **`localhost:5433`** on the host (**DBeaver**). Inside Compose, backends still use **`db:5432`**. |
 | `password authentication failed` | Wrong `DB_USER`/`DB_PASS` | Match Compose: `postgres` / `password` unless you changed env |
 | Migrations fail on first boot | Postgres not ready or schema missing | Wait for healthy `db`; ensure `init.sql` ran (new volume); check service logs |
-| Port `5432` already in use | Local Postgres / another stack | Stop conflicting service or remap host port in `docker-compose.yml` (would be a deliberate config change) |
+| Port **`5433`** already in use on host | Another process bound `5433` | Change the **left side** of the `ports` mapping in `docker-compose.yml` (e.g. `5434:5432`) — **do not** change backend `DB_PORT`/`DB_HOST`; use the new host port in DBeaver |
 | Tables missing | Migrations never ran | Check container log for `migration:run`; run migration commands manually (section 8) |
 
 ---

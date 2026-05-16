@@ -175,7 +175,7 @@ services:
     image: postgres:17.5-alpine3.21
     container_name: db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - challenge-network
     restart: always
