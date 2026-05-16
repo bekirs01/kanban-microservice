@@ -204,6 +204,16 @@ export function useWebSocket() {
       }
     });
 
+    socketRef.current.on(
+      "registration:pending",
+      (data: ResponseNotificationDto) => {
+        toast.info(tRef.current("notification.registrationPending"), {
+          description: data.content,
+          duration: 8000,
+        });
+      },
+    );
+
     socketRef.current.on("comment:new", (data: ResponseNotificationDto) => {
       scheduleBoardSync();
       if (!shouldMuteToastForActor(data.actorId)) {

@@ -1,5 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsNumber, IsOptional, Min } from 'class-validator';
+import { UserRole } from '../../enums';
 
 export class PaginationQueryDto {
   @IsOptional()
@@ -24,4 +25,5 @@ export class PaginationQueryDto {
 
 export interface PaginationQueryPayload extends PaginationQueryDto {
   userId: string;
+  requesterRole?: UserRole;
 }

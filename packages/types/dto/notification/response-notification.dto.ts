@@ -3,6 +3,8 @@ export interface ResponseNotificationDto {
   content: string;
   actorId?: string;
   taskId?: string;
+  registrationRequestId?: string;
+  requestedRole?: string;
 }
 
 export interface KanbanBoardChangeDto {

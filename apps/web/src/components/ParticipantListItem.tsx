@@ -10,12 +10,14 @@ interface Props {
     Partial<Pick<ResponseUserDto, "username" | "email">>;
   onRemove: (id: string) => void;
   isRemoving?: boolean;
+  allowRemove?: boolean;
 }
 
 export const ParticipantListItem: React.FC<Props> = ({
   user,
   onRemove,
   isRemoving,
+  allowRemove = true,
 }) => {
   const { t } = useTranslation();
 
@@ -47,18 +49,20 @@ export const ParticipantListItem: React.FC<Props> = ({
         </p>
       </div>
       <div className="ml-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${isRemoving ? "opacity-100" : ""}`}
-          onClick={() => onRemove(String(user.id ?? ""))}
-          disabled={isRemoving}
-          aria-label={t("history.historyAriaRemove", {
-            username: usernameLabel,
-          })}
-        >
-          <Trash className="h-4 w-4 text-destructive" />
-        </Button>
+        {allowRemove ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${isRemoving ? "opacity-100" : ""}`}
+            onClick={() => onRemove(String(user.id ?? ""))}
+            disabled={isRemoving}
+            aria-label={t("history.historyAriaRemove", {
+              username: usernameLabel,
+            })}
+          >
+            <Trash className="h-4 w-4 text-destructive" />
+          </Button>
+        ) : null}
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ interface Props {
   taskId: string | null;
   isLoading: boolean;
   isEditing: boolean;
+  canEditOrDelete?: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onDelete: () => void;
@@ -44,6 +45,7 @@ export const TaskDetailHeader: React.FC<Props> = ({
   taskId,
   isLoading,
   isEditing,
+  canEditOrDelete = true,
   onStartEdit,
   onCancelEdit,
   onDelete,
@@ -122,7 +124,7 @@ export const TaskDetailHeader: React.FC<Props> = ({
         </div>
       </div>
       <div className="shrink-0 flex items-center gap-2">
-        {!isLoading && task && !isEditing ? (
+        {!isLoading && task && !isEditing && canEditOrDelete ? (
           <>
             <Button variant="ghost" size="sm" onClick={onStartEdit}>
               {t("common.edit")}
@@ -132,7 +134,7 @@ export const TaskDetailHeader: React.FC<Props> = ({
             </Button>
           </>
         ) : null}
-        {!isLoading && task && isEditing ? (
+        {!isLoading && task && isEditing && canEditOrDelete ? (
           <Button variant="ghost" size="sm" onClick={onCancelEdit}>
             {t("common.cancel")}
           </Button>

@@ -1,9 +1,13 @@
 import { useTranslation } from "@/i18n/useTranslation";
+import { useAuth } from "@/hooks/useAuth";
+import type { SubmitRegistrationRequestDto } from "@challenge/types";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { toast } from "sonner";
+
+type SignupSelectableRole = SubmitRegistrationRequestDto["requestedRole"];
 
 export function Register() {
   const { t } = useTranslation();
@@ -11,9 +15,11 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [requestedRole, setRequestedRole] =
+    useState<SignupSelectableRole>("USER" as SubmitRegistrationRequestDto["requestedRole"]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const { submitRegistrationRequest } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -30,11 +36,22 @@ export function Register() {
       return;
     }
 
+    if (username.trim().length < 3) {
+      setError(t("validation.usernameMin"));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      await register({ username, email, password });
-      navigate({ to: "/kanban" });
+      await submitRegistrationRequest({
+        username: username.trim(),
+        email: email.trim(),
+        password,
+        requestedRole,
+      });
+      toast.success(t("auth.registrationSubmitted"));
+      navigate({ to: "/login" });
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>;
       setError(
@@ -137,6 +154,26 @@ export function Register() {
                 placeholder={t("auth.passwordPlaceholderMasked")}
               />
             </div>
+
+            <div>
+              <label
+                htmlFor="requested-role"
+                className="block text-sm font-medium text-gray-700"
+              >
+                {t("auth.requestedRoleLabel")}
+              </label>
+              <select
+                id="requested-role"
+                value={requestedRole}
+                onChange={(e) =>
+                  setRequestedRole(e.target.value as SignupSelectableRole)
+                }
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+              >
+                <option value="USER">{t("admin.role.user")}</option>
+                <option value="MANAGER">{t("admin.role.manager")}</option>
+              </select>
+            </div>
           </div>
 
           <div>
@@ -145,9 +182,7 @@ export function Register() {
               disabled={isLoading}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading
-                ? t("auth.registerSubmitBusy")
-                : t("auth.registerSubmitIdle")}
+              {isLoading ? t("auth.registerSubmitBusy") : t("auth.submitSignupRequest")}
             </button>
           </div>
 

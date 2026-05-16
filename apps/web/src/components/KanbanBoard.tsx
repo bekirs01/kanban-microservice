@@ -9,10 +9,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "@/i18n/useTranslation";
+import { canDragTaskOnBoard } from "@/lib/rbac";
 import { useUpdateTask } from "@/hooks/useTasks";
 import { useUsersByIds } from "@/hooks/useUsersByIds";
 import { cn } from "@/lib/utils";
-import type { ResponseTaskDto, TaskStatus } from "@challenge/types";
+import type { ResponseTaskDto, ResponseUserDto, TaskStatus } from "@challenge/types";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import {
   DndContext,
@@ -45,16 +46,22 @@ const BOARD_STATUS_KEYS: Record<StatusValue, string> = {
   DONE: "board.columns.done",
 };
 
+type BoardViewerRole = ResponseUserDto["role"];
+
 interface KanbanBoardProps {
   tasks: ResponseTaskDto[];
   isLoading?: boolean;
   onTaskClick: (task: ResponseTaskDto) => void;
+  viewerId?: string;
+  viewerRole?: BoardViewerRole;
 }
 
 export function KanbanBoard({
   tasks,
   isLoading,
   onTaskClick,
+  viewerId,
+  viewerRole,
 }: KanbanBoardProps) {
   const { t } = useTranslation();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -122,12 +129,16 @@ export function KanbanBoard({
             title={t(BOARD_STATUS_KEYS[status])}
             tasks={getTasksByStatus(status)}
             onTaskClick={onTaskClick}
+            viewerId={viewerId}
+            viewerRole={viewerRole}
           />
         ))}
       </div>
 
       <DragOverlay>
-        {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+        {activeTask ? (
+          <TaskCard task={activeTask} isOverlay isDraggable />
+        ) : null}
       </DragOverlay>
     </DndContext>
   );
@@ -138,11 +149,15 @@ function KanbanColumn({
   title,
   tasks,
   onTaskClick,
+  viewerId,
+  viewerRole,
 }: {
   status: StatusValue;
   title: string;
   tasks: ResponseTaskDto[];
   onTaskClick: (task: ResponseTaskDto) => void;
+  viewerId?: string;
+  viewerRole?: BoardViewerRole;
 }) {
   const { t } = useTranslation();
   const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -181,6 +196,8 @@ function KanbanColumn({
               key={task.id}
               task={task}
               onClick={() => onTaskClick(task)}
+              viewerId={viewerId}
+              viewerRole={viewerRole}
             />
           ))}
         </div>
@@ -192,12 +209,21 @@ function KanbanColumn({
 function DraggableTaskCard({
   task,
   onClick,
+  viewerId,
+  viewerRole,
 }: {
   task: ResponseTaskDto;
   onClick: () => void;
+  viewerId?: string;
+  viewerRole?: BoardViewerRole;
 }) {
+  const canDrag = canDragTaskOnBoard(viewerRole, viewerId, task);
+
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: task.id });
+    useDraggable({
+      id: task.id,
+      disabled: !canDrag,
+    });
 
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
@@ -220,9 +246,9 @@ function DraggableTaskCard({
       {...listeners}
       {...attributes}
       onClick={onClick}
-      className="outline-none"
+      className={`outline-none ${canDrag ? "" : "touch-none cursor-default select-none"}`}
     >
-      <TaskCard task={task} />
+      <TaskCard task={task} isDraggable={canDrag} />
     </div>
   );
 }
@@ -234,16 +260,24 @@ function priorityLabelKey(priority: string): string {
 function TaskCard({
   task,
   isOverlay,
+  isDraggable = true,
 }: {
   task: ResponseTaskDto;
   isOverlay?: boolean;
+  isDraggable?: boolean;
 }) {
   const { t, dateFnsLocale } = useTranslation();
 
   return (
     <Card
       className={cn(
-        "cursor-grab hover:shadow-md transition-all duration-200 border-border/50 group bg-card",
+        "hover:shadow-md transition-all duration-200 border-border/50 group bg-card",
+        isDraggable &&
+          !isOverlay &&
+          "cursor-grab hover:shadow-md transition-all duration-200",
+        !isDraggable &&
+          !isOverlay &&
+          "cursor-default hover:shadow-none",
         isOverlay &&
           "rotate-2 shadow-xl cursor-grabbing ring-1 ring-primary/20 scale-105 z-50",
       )}

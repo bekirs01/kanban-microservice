@@ -1,4 +1,8 @@
-import type { LoginAuthDto, RegisterAuthDto, ResponseUserDto } from "@challenge/types";
+import type {
+  LoginAuthDto,
+  ResponseUserDto,
+  SubmitRegistrationRequestDto,
+} from "@challenge/types";
 import { createContext } from "react";
 
 export interface AuthContextType {
@@ -6,10 +10,10 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginAuthDto) => Promise<void>;
-  register: (credentials: RegisterAuthDto) => Promise<void>;
-  logout: () => void;
+  submitRegistrationRequest: (dto: SubmitRegistrationRequestDto) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>(
-  {} as AuthContextType
+  {} as AuthContextType,
 );

@@ -1,4 +1,13 @@
-import type { AssignTaskPayload, CreateCommentPayload, CreateTaskPayload, PaginationQueryPayload, TaskHistoryPayload, UpdateTaskPayload } from "@challenge/types";
+import type {
+  AssignTaskPayload,
+  CreateCommentPayload,
+  CreateTaskPayload,
+  DeleteTaskPayload,
+  PaginationQueryPayload,
+  TaskAccessRpcPayload,
+  TaskHistoryPayload,
+  UpdateTaskPayload,
+} from "@challenge/types";
 import { Controller } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
 import { CommentService } from "src/comment/comment.service";
@@ -6,16 +15,19 @@ import { TaskService } from "./task.service";
 
 @Controller("tasks")
 export class TaskController {
-  constructor(private readonly taskService: TaskService, private readonly commentService: CommentService) { }
+  constructor(
+    private readonly taskService: TaskService,
+    private readonly commentService: CommentService,
+  ) { }
 
   @MessagePattern("task.create")
   create(@Payload() data: CreateTaskPayload) {
-    return this.taskService.create(data)
+    return this.taskService.create(data);
   }
 
   @MessagePattern("task.delete")
-  delete(@Payload() data: { taskId: string, userId: string }) {
-    return this.taskService.delete(data)
+  delete(@Payload() data: DeleteTaskPayload) {
+    return this.taskService.delete(data);
   }
 
   @MessagePattern("task.assign_user")
@@ -39,12 +51,12 @@ export class TaskController {
   }
 
   @MessagePattern("task.comment.find_all")
-  getAllTaskComments(@Payload() data: { taskId: string, userId: string }) {
-    return this.commentService.getByTaskId(data.taskId, data.userId);
+  getAllTaskComments(@Payload() data: TaskAccessRpcPayload) {
+    return this.commentService.getByTaskId(data.taskId, data.userId, data.requesterRole);
   }
 
   @MessagePattern("task.history")
-  getAllHistory(@Payload() data: TaskHistoryPayload & PaginationQueryPayload) {
+  getAllHistory(@Payload() data: TaskHistoryPayload) {
     return this.taskService.getTaskHistory(data);
   }
 
@@ -54,7 +66,7 @@ export class TaskController {
   }
 
   @MessagePattern("task.find_one")
-  getById(@Payload() taskId: string) {
-    return this.taskService.getById(taskId);
+  getById(@Payload() payload: TaskAccessRpcPayload) {
+    return this.taskService.getById(payload);
   }
 }

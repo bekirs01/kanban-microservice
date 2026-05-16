@@ -20,3 +20,9 @@ export enum ActionType {
   COMMENT = "COMMENT",
   DELETE = "DELETE"
 }
+
+export enum UserRole {
+  ADMIN = "ADMIN",
+  MANAGER = "MANAGER",
+  USER = "USER",
+}

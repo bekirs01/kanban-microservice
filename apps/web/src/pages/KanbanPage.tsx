@@ -14,8 +14,10 @@ import type { LocaleCode } from "@/i18n/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { isAdminRole, sharedBoardQueryFlag } from "@/lib/rbac";
 import type { ResponseTaskDto } from "@challenge/types";
 import { LogOut, Plus, Wifi, WifiOff } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -30,7 +32,7 @@ export function KanbanPage() {
   const { data: tasksData, isLoading } = useTasks({
     page: 1,
     limit: 100,
-    sharedBoard: true,
+    sharedBoard: sharedBoardQueryFlag(user?.role),
   });
 
   const tasks = tasksData?.items || [];
@@ -39,8 +41,8 @@ export function KanbanPage() {
     setSelectedTaskId(task.id);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast.success(t("board.logoutToast"));
   };
 
@@ -98,6 +100,11 @@ export function KanbanPage() {
                   username: user?.username ?? "",
                 })}
               </span>
+              {isAdminRole(user?.role) ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/admin">{t("common.adminPanel")}</Link>
+                </Button>
+              ) : null}
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 {t("common.logout")}
@@ -110,10 +117,12 @@ export function KanbanPage() {
       <div className="border-b bg-muted/50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row sm:justify-end gap-4">
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("board.addTask")}
-            </Button>
+            {(user?.role ?? "USER") !== "USER" ? (
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t("board.addTask")}
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -123,6 +132,8 @@ export function KanbanPage() {
           tasks={tasks}
           isLoading={isLoading}
           onTaskClick={handleTaskClick}
+          viewerId={user?.id}
+          viewerRole={user?.role}
         />
       </main>
 

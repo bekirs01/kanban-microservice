@@ -18,6 +18,12 @@ export class UnauthorizedRpcException extends RpcException {
   }
 }
 
+export class ForbiddenRpcException extends RpcException {
+  constructor(message: string = 'Forbidden') {
+    super({ statusCode: 403, message });
+  }
+}
+
 export class InvalidCredentialsException extends RpcException {
   constructor(message: string = 'Credenciais inválidas') {
     super({ statusCode: 401, message });

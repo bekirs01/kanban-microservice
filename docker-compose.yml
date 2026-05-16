@@ -74,6 +74,7 @@ services:
       - TCP_PORT=3002
       - HTTP_PORT=3012
       - JWT_SECRET=jungle_super_secret_key_123
+      - RABBITMQ_URI=amqp://admin:admin@rabbitmq:5672
       - DB_HOST=db
       - DB_PORT=5432
       - DB_USER=postgres
@@ -86,6 +87,8 @@ services:
       retries: 5
     depends_on:
       db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - challenge-network

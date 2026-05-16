@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
-import { TaskPriority, TaskStatus } from '../../enums';
+import { TaskPriority, TaskStatus, UserRole } from '../../enums';
 
 export class CreateTaskDto {
 
@@ -36,5 +36,6 @@ export class CreateTaskDto {
 }
 
 export interface CreateTaskPayload extends CreateTaskDto {
-  creatorId: string
+  creatorId: string;
+  requesterRole?: UserRole;
 }

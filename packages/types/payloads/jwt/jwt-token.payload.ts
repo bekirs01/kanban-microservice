@@ -1,6 +1,7 @@
 export interface JwtTokenPayload {
-  sub: string,
-  username: string,
-  iat: string,
-  exp: string,
+  sub: string;
+  username: string;
+  role?: string;
+  iat: string;
+  exp: string;
 }

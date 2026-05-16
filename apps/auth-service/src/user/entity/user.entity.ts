@@ -1,3 +1,4 @@
+import { UserRole } from '@challenge/types';
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('users')
@@ -13,6 +14,9 @@ export class User {
 
   @Column()
   passwordHash!: string;
+
+  @Column({ type: 'varchar', length: 32, default: UserRole.USER })
+  role!: UserRole;
 
   @Column({ nullable: true })
   refreshTokenHash!: string;

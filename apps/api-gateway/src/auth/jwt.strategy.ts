@@ -1,3 +1,4 @@
+import { UserRole } from '@challenge/types';
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -13,6 +14,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    return { id: payload.sub, username: payload.username };
+    let role = UserRole.USER;
+    if (payload?.role === UserRole.ADMIN || payload?.role === UserRole.MANAGER || payload?.role === UserRole.USER) {
+      role = payload.role;
+    }
+    return { id: payload.sub, username: payload.username, role };
   }
 }

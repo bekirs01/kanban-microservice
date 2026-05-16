@@ -1,0 +1,106 @@
+import {
+  AdminCreateUserDto,
+  AdminUpdateRoleBodyDto,
+  UserRole,
+} from "@challenge/types";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
+import { ClientProxy } from "@nestjs/microservices";
+import { AuthGuard } from "@nestjs/passport";
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import { Roles } from "../auth/roles.decorator";
+import { RolesGuard } from "../auth/roles.guard";
+
+@ApiTags("admin")
+@ApiBearerAuth()
+@Controller("admin")
+@UseGuards(AuthGuard("jwt"), RolesGuard)
+@Roles(UserRole.ADMIN)
+export class AdminController {
+  constructor(@Inject("AUTH_SERVICE") private readonly authClient: ClientProxy) {}
+
+  @Get("users")
+  @ApiOperation({ summary: "List accounts (ADMIN only)" })
+  @ApiResponse({ status: 200, description: "Users returned." })
+  listUsers(@Req() req: any) {
+    return this.authClient.send("admin.users.list", {
+      requesterUserId: req.user.id,
+    });
+  }
+
+  @Post("users")
+  @ApiOperation({ summary: "Create login account with role (ADMIN only)" })
+  @ApiResponse({ status: 201, description: "User created." })
+  createUser(@Req() req: any, @Body() dto: AdminCreateUserDto) {
+    return this.authClient.send("admin.users.create", {
+      ...dto,
+      requesterUserId: req.user.id,
+    });
+  }
+
+  @Patch("users/:id/role")
+  @ApiOperation({ summary: "Update user role (ADMIN only)" })
+  @ApiParam({ name: "id", description: "User id (UUID)" })
+  patchRole(
+    @Req() req: any,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: AdminUpdateRoleBodyDto,
+  ) {
+    return this.authClient.send("admin.users.patchRole", {
+      requesterUserId: req.user.id,
+      targetUserId: id,
+      role: body.role,
+    });
+  }
+
+  @Get("registration-requests")
+  @ApiOperation({ summary: "List pending registration requests (ADMIN)" })
+  @ApiResponse({ status: 200, description: "Pending requests returned." })
+  listPendingRequests(@Req() req: any) {
+    return this.authClient.send("admin.registrations.listPending", {
+      requesterUserId: req.user.id,
+    });
+  }
+
+  @Post("registration-requests/:id/approve")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Approve a pending registration request" })
+  @ApiParam({ name: "id", description: "Pending request id (UUID)" })
+  @ApiResponse({ status: 204 })
+  approveRegistration(@Req() req: any, @Param("id", ParseUUIDPipe) id: string) {
+    return this.authClient.send("admin.registrations.approve", {
+      requesterUserId: req.user.id,
+      requestId: id,
+    });
+  }
+
+  @Post("registration-requests/:id/reject")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Reject a pending registration request" })
+  @ApiParam({ name: "id", description: "Pending request id (UUID)" })
+  @ApiResponse({ status: 204 })
+  rejectRegistration(@Req() req: any, @Param("id", ParseUUIDPipe) id: string) {
+    return this.authClient.send("admin.registrations.reject", {
+      requesterUserId: req.user.id,
+      requestId: id,
+    });
+  }
+}

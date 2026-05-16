@@ -1,4 +1,4 @@
-import { AssignTaskDto, AssignTaskPayload, CreateCommentDto, CreateCommentPayload, CreateTaskDto, CreateTaskPayload, PaginationQueryDto, PaginationQueryPayload, TaskHistoryPayload, UpdateTaskDto, UpdateTaskPayload } from '@challenge/types';
+import { AssignTaskDto, AssignTaskPayload, CreateCommentDto, CreateCommentPayload, CreateTaskDto, CreateTaskPayload, DeleteTaskPayload, PaginationQueryDto, PaginationQueryPayload, TaskAccessRpcPayload, TaskHistoryPayload, UpdateTaskDto, UpdateTaskPayload } from '@challenge/types';
 import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { AuthGuard } from '@nestjs/passport';
@@ -9,6 +9,7 @@ import {
   ApiResponse,
   ApiTags
 } from '@nestjs/swagger';
+import { isBoardElevated, normalizeRequesterRole } from '../common/rbac';
 
 @ApiTags("tasks")
 @ApiBearerAuth()
@@ -23,9 +24,11 @@ export class TasksController {
   @ApiResponse({ status: 400, description: 'Dados inválidos.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   createTask(@Body() dto: CreateTaskDto, @Req() req: any) {
+    const role = normalizeRequesterRole(req.user?.role);
     const payload: CreateTaskPayload = {
       ...dto,
-      creatorId: req.user.id
+      creatorId: req.user.id,
+      requesterRole: role,
     };
     return this.tasksClient.send("task.create", payload);
   }
@@ -38,9 +41,11 @@ export class TasksController {
   @ApiResponse({ status: 404, description: 'Tarefa não encontrada.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   deleteTask(@Param("id") taskId: string, @Req() req: any) {
-    const payload = {
+    const role = normalizeRequesterRole(req.user?.role);
+    const payload: DeleteTaskPayload = {
       taskId,
-      userId: req.user.id
+      userId: req.user.id,
+      requesterRole: role,
     };
     return this.tasksClient.send("task.delete", payload);
   }
@@ -52,10 +57,12 @@ export class TasksController {
   @ApiResponse({ status: 201, description: 'Usuário atribuído com sucesso.' })
   @ApiResponse({ status: 404, description: 'Tarefa ou Usuário não encontrados.' })
   assignUser(@Body() dto: AssignTaskDto, @Param("id") taskId: string, @Req() req: any) {
+    const role = normalizeRequesterRole(req.user?.role);
     const payload: AssignTaskPayload = {
       assigneeId: dto.assigneeId,
       taskId,
-      assignerId: req.user.id
+      assignerId: req.user.id,
+      requesterRole: role,
     };
     return this.tasksClient.send("task.assign_user", payload);
   }
@@ -67,10 +74,12 @@ export class TasksController {
   @ApiResponse({ status: 201, description: 'Usuário desatribuído com sucesso.' })
   @ApiResponse({ status: 404, description: 'Tarefa ou Usuário não encontrados.' })
   unassignUser(@Body() dto: AssignTaskDto, @Param("id") taskId: string, @Req() req: any) {
+    const role = normalizeRequesterRole(req.user?.role);
     const payload: AssignTaskPayload = {
       assigneeId: dto.assigneeId,
       taskId,
-      assignerId: req.user.id
+      assignerId: req.user.id,
+      requesterRole: role,
     };
     return this.tasksClient.send("task.unassign_user", payload);
   }
@@ -84,11 +93,13 @@ export class TasksController {
   @ApiResponse({ status: 404, description: 'Tarefa não encontrada.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
   update(@Body() dto: UpdateTaskDto, @Param("id") taskId: string, @Req() req: any) {
+    const role = normalizeRequesterRole(req.user?.role);
     const payload: UpdateTaskPayload = {
       ...dto,
-      taskId: taskId,
-      authorId: req.user.id
-    }
+      taskId,
+      authorId: req.user.id,
+      requesterRole: role,
+    };
     return this.tasksClient.send("task.update", payload);
   }
 
@@ -98,34 +109,14 @@ export class TasksController {
   @ApiParam({ name: 'id', description: 'ID da tarefa (UUID)' })
   @ApiResponse({ status: 201, description: 'Comentário adicionado.' })
   comment(@Body() dto: CreateCommentDto, @Param("id") taskId: string, @Req() req: any) {
+    const role = normalizeRequesterRole(req.user?.role);
     const payload: CreateCommentPayload = {
-      taskId: taskId,
+      taskId,
       authorId: req.user.id,
-      content: dto.content
+      content: dto.content,
+      requesterRole: role,
     };
     return this.tasksClient.send("task.comment", payload);
-  }
-
-  @UseGuards(AuthGuard("jwt"))
-  @Get(":id")
-  @ApiOperation({ summary: 'Buscar tarefa por ID' })
-  @ApiParam({ name: 'id', description: 'ID da tarefa (UUID)' })
-  @ApiResponse({ status: 200, description: 'Tarefa encontrada.' })
-  @ApiResponse({ status: 404, description: 'Tarefa não encontrada.' })
-  getById(@Param("id", ParseUUIDPipe) taskId: string) {
-    return this.tasksClient.send("task.find_one", taskId);
-  }
-
-  @UseGuards(AuthGuard("jwt"))
-  @Get()
-  @ApiOperation({ summary: 'Listar tarefas com paginação' })
-  @ApiResponse({ status: 200, description: 'Lista de tarefas retornada.' })
-  getAll(@Query() pagination: PaginationQueryDto, @Req() request: any) {
-    const payload: PaginationQueryPayload = {
-      ...pagination,
-      userId: request.user.id
-    }
-    return this.tasksClient.send('task.find_all', payload);
   }
 
   @UseGuards(AuthGuard("jwt"))
@@ -139,9 +130,11 @@ export class TasksController {
     @Param("id", ParseUUIDPipe) taskId: string,
     @Req() request: any
   ) {
-    const payload = {
+    const role = normalizeRequesterRole(request.user?.role);
+    const payload: TaskAccessRpcPayload = {
       taskId,
-      userId: request.user.id
+      userId: request.user.id,
+      requesterRole: role,
     };
     return this.tasksClient.send("task.comment.find_all", payload);
   }
@@ -158,11 +151,45 @@ export class TasksController {
     @Query() pagination: PaginationQueryDto,
     @Req() request: any
   ) {
-    const payload: TaskHistoryPayload & PaginationQueryPayload = {
+    const role = normalizeRequesterRole(request.user?.role);
+    const payload: TaskHistoryPayload = {
       ...pagination,
       userId: request.user.id,
+      requesterRole: role,
       taskId,
     };
     return this.tasksClient.send("task.history", payload);
+  }
+
+  @UseGuards(AuthGuard("jwt"))
+  @Get()
+  @ApiOperation({ summary: 'Listar tarefas com paginação' })
+  @ApiResponse({ status: 200, description: 'Lista de tarefas retornada.' })
+  getAll(@Query() pagination: PaginationQueryDto, @Req() request: any) {
+    const role = normalizeRequesterRole(request.user?.role);
+    const elevated = isBoardElevated(role);
+    const payload: PaginationQueryPayload = {
+      ...pagination,
+      userId: request.user.id,
+      requesterRole: role,
+      sharedBoard: pagination.sharedBoard === true && elevated,
+    };
+    return this.tasksClient.send('task.find_all', payload);
+  }
+
+  @UseGuards(AuthGuard("jwt"))
+  @Get(":id")
+  @ApiOperation({ summary: 'Buscar tarefa por ID' })
+  @ApiParam({ name: 'id', description: 'ID da tarefa (UUID)' })
+  @ApiResponse({ status: 200, description: 'Tarefa encontrada.' })
+  @ApiResponse({ status: 404, description: 'Tarefa não encontrada.' })
+  getById(@Param("id", ParseUUIDPipe) taskId: string, @Req() req: any) {
+    const role = normalizeRequesterRole(req.user?.role);
+    const payload: TaskAccessRpcPayload = {
+      taskId,
+      userId: req.user.id,
+      requesterRole: role,
+    };
+    return this.tasksClient.send("task.find_one", payload);
   }
 }

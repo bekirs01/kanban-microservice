@@ -28,6 +28,7 @@ interface Props {
   handleToggleAssign: (userId: string) => Promise<void>;
   handleRemoveAssignee: (userId: string) => Promise<void>;
   removingAssignee: string | null;
+  manageAssignments: boolean;
 }
 
 export const TaskParticipants: React.FC<Props> = ({
@@ -40,6 +41,7 @@ export const TaskParticipants: React.FC<Props> = ({
   handleToggleAssign,
   handleRemoveAssignee,
   removingAssignee,
+  manageAssignments,
 }) => {
   const { t } = useTranslation();
 
@@ -49,48 +51,50 @@ export const TaskParticipants: React.FC<Props> = ({
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           {t("participants.title")}
         </h4>
-        <Popover open={openAssign} onOpenChange={setOpenAssign}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 -mr-2 hover:bg-background"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="p-0 w-60" align="end">
-            <Command>
-              <CommandInput placeholder={t("participants.searchPlaceholder")} />
-              <CommandList>
-                <CommandEmpty>{t("participants.emptySuggest")}</CommandEmpty>
-                <CommandGroup heading={t("participants.groupLabel")}>
-                  {isLoadingAllUsers ? (
-                    <CommandItem disabled className="flex items-center justify-between">
-                      <span>{t("participants.loadingLabel")}</span>
-                    </CommandItem>
-                  ) : (
-                    (candidateUsers ?? []).map((candidate) => {
-                      const uid = String(candidate.id ?? "");
-                      const isAssigned = (taskAssignees ?? []).includes(uid);
-                      return (
-                        <CommandItem
-                          key={uid}
-                          value={String(candidate.username ?? uid)}
-                          onSelect={() => handleToggleAssign(uid)}
-                          className="flex items-center justify-between"
-                        >
-                          <span>{String(candidate.username ?? uid)}</span>
-                          {isAssigned ? <Check className="h-4 w-4" /> : null}
-                        </CommandItem>
-                      );
-                    })
-                  )}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+        {manageAssignments ? (
+          <Popover open={openAssign} onOpenChange={setOpenAssign}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 -mr-2 hover:bg-background"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-60" align="end">
+              <Command>
+                <CommandInput placeholder={t("participants.searchPlaceholder")} />
+                <CommandList>
+                  <CommandEmpty>{t("participants.emptySuggest")}</CommandEmpty>
+                  <CommandGroup heading={t("participants.groupLabel")}>
+                    {isLoadingAllUsers ? (
+                      <CommandItem disabled className="flex items-center justify-between">
+                        <span>{t("participants.loadingLabel")}</span>
+                      </CommandItem>
+                    ) : (
+                      (candidateUsers ?? []).map((candidate) => {
+                        const uid = String(candidate.id ?? "");
+                        const isAssigned = (taskAssignees ?? []).includes(uid);
+                        return (
+                          <CommandItem
+                            key={uid}
+                            value={String(candidate.username ?? uid)}
+                            onSelect={() => handleToggleAssign(uid)}
+                            className="flex items-center justify-between"
+                          >
+                            <span>{String(candidate.username ?? uid)}</span>
+                            {isAssigned ? <Check className="h-4 w-4" /> : null}
+                          </CommandItem>
+                        );
+                      })
+                    )}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        ) : null}
       </div>
       <div className="space-y-2">
         {taskAssignees?.length ? (
@@ -108,6 +112,7 @@ export const TaskParticipants: React.FC<Props> = ({
                 user={participant}
                 onRemove={(uid) => handleRemoveAssignee(uid)}
                 isRemoving={removingAssignee === id}
+                allowRemove={manageAssignments}
               />
             );
           })

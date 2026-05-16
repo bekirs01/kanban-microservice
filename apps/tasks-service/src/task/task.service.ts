@@ -1,5 +1,19 @@
-import { TaskNotFoundRpcException, UnauthorizedRpcException } from '@challenge/exceptions';
-import { ActionType, AssignTaskPayload, CreateCommentPayload, CreateTaskPayload, PaginationQueryPayload, PaginationResultDto, ResponseTaskHistoryDto, TaskHistoryPayload, TaskNotificationPayload, UpdateTaskPayload } from '@challenge/types';
+import { ForbiddenRpcException, TaskNotFoundRpcException } from '@challenge/exceptions';
+import {
+  ActionType,
+  AssignTaskPayload,
+  CreateCommentPayload,
+  CreateTaskPayload,
+  DeleteTaskPayload,
+  PaginationQueryPayload,
+  PaginationResultDto,
+  ResponseTaskHistoryDto,
+  TaskAccessRpcPayload,
+  TaskHistoryPayload,
+  TaskNotificationPayload,
+  UpdateTaskPayload,
+  UserRole,
+} from '@challenge/types';
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,8 +29,8 @@ export class TaskService {
   constructor(
     @InjectRepository(Task) private taskRepository: Repository<Task>,
     @InjectRepository(TaskHistory) private historyRepository: Repository<TaskHistory>,
-    @Inject("NOTIFICATION_SERVICE") private readonly notificationClient: ClientProxy,
-    private readonly commentService: CommentService
+    @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
+    private readonly commentService: CommentService,
   ) { }
 
   private buildTaskNotifyShape(task: Task) {
@@ -32,8 +46,38 @@ export class TaskService {
     };
   }
 
+  private normalizeRole(role?: string): UserRole {
+    if (role === UserRole.ADMIN || role === UserRole.MANAGER || role === UserRole.USER) {
+      return role;
+    }
+    return UserRole.USER;
+  }
+
+  private isElevated(role: UserRole): boolean {
+    return role === UserRole.ADMIN || role === UserRole.MANAGER;
+  }
+
+  private canParticipate(task: Task, userId: string): boolean {
+    return task.creatorId === userId || (task.assignees || []).includes(userId);
+  }
+
+  private assertTaskVisible(task: Task, userId: string, roleHint?: string): void {
+    const role = this.normalizeRole(roleHint);
+    if (this.isElevated(role)) return;
+    if (!this.canParticipate(task, userId)) {
+      throw new ForbiddenRpcException();
+    }
+  }
+
   async create(dto: CreateTaskPayload): Promise<Task> {
-    const saved = await this.taskRepository.save(dto);
+    if (this.normalizeRole(dto.requesterRole) === UserRole.USER) {
+      throw new ForbiddenRpcException();
+    }
+
+    const { requesterRole, ...toSave } = dto;
+    void requesterRole;
+
+    const saved = await this.taskRepository.save(toSave as Task);
     const recipientSet = new Set((saved.assignees || []).filter(Boolean));
     recipientSet.delete(saved.creatorId);
     const recipients = [...recipientSet];
@@ -46,13 +90,17 @@ export class TaskService {
       task: snapshot,
       action: ActionType.CREATED,
     };
-    this.notificationClient.emit("task.created", payload);
+    this.notificationClient.emit('task.created', payload);
     return saved;
   }
 
-  async delete(data: { taskId: string, userId: string }): Promise<DeleteResult> {
+  async delete(data: DeleteTaskPayload): Promise<DeleteResult> {
+    if (this.normalizeRole(data.requesterRole) === UserRole.USER) {
+      throw new ForbiddenRpcException();
+    }
+
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
-    if (!task) throw new TaskNotFoundRpcException;
+    if (!task) throw new TaskNotFoundRpcException();
 
     const recipientSet = new Set([task.creatorId, ...(task.assignees || [])].filter(Boolean));
     recipientSet.delete(data.userId);
@@ -66,32 +114,66 @@ export class TaskService {
       task: snapshot,
       action: ActionType.DELETE,
     };
-    this.notificationClient.emit("task.deleted", notifyPayload);
+    this.notificationClient.emit('task.deleted', notifyPayload);
 
     await this.historyRepository.save({
       action: ActionType.DELETE,
       taskId: task.id,
       changes: {
         new: {},
-        old: { ...task }
+        old: { ...task },
       },
-      changedBy: data.userId
-    })
+      changedBy: data.userId,
+    });
 
     return await this.taskRepository.delete(data.taskId);
   }
 
   async update(data: UpdateTaskPayload): Promise<Task> {
+    const role = this.normalizeRole(data.requesterRole);
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
     if (!task) throw new TaskNotFoundRpcException();
 
-    const changes = this.computeChanges(task, data);
+    if (role === UserRole.USER) {
+      this.assertTaskVisible(task, data.authorId, data.requesterRole);
+      if (!(task.assignees || []).includes(data.authorId)) {
+        throw new ForbiddenRpcException();
+      }
+
+      const { taskId: _tid, authorId: _aid, requesterRole: _rr, ...incoming } = data;
+      void _tid;
+      void _aid;
+      void _rr;
+      const keys = Object.keys(incoming).filter((k) => (incoming as Record<string, unknown>)[k] !== undefined);
+      if (keys.some((k) => k !== 'status')) {
+        throw new ForbiddenRpcException();
+      }
+    }
+
+    const { taskId: __tid, authorId: __aid, requesterRole: __rr, ...fieldsToMerge } = data;
+    void __tid;
+    void __aid;
+    void __rr;
+
+    const patch: Partial<Task> =
+      role === UserRole.USER
+        ? { status: data.status as Task['status'] }
+        : ({ ...fieldsToMerge } as Partial<Task>);
+
+    const synthetic: UpdateTaskPayload = {
+      taskId: data.taskId,
+      authorId: data.authorId,
+      ...(patch as Omit<UpdateTaskPayload, 'taskId' | 'authorId' | 'requesterRole'>),
+      requesterRole: data.requesterRole,
+    };
+
+    const changes = this.computeChanges(task, synthetic);
 
     if (this.hasChanges(changes)) {
       await this.saveHistory(task.id, changes, data.authorId);
     }
 
-    Object.assign(task, data);
+    Object.assign(task, patch);
     const updatedTask = await this.taskRepository.save(task);
 
     if (this.hasChanges(changes)) {
@@ -103,16 +185,17 @@ export class TaskService {
 
   async getAll(pagination: PaginationQueryPayload): Promise<PaginationResultDto<Task[]>> {
     const { limit = 10, page = 1, userId, sharedBoard } = pagination;
+    const role = this.normalizeRole(pagination.requesterRole);
+    const effectiveSharedBoard = sharedBoard === true && this.isElevated(role);
 
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.taskRepository
-      .createQueryBuilder("task");
+    const queryBuilder = this.taskRepository.createQueryBuilder('task');
 
-    if (!sharedBoard) {
+    if (!effectiveSharedBoard) {
       queryBuilder
-        .where("task.creatorId = :userId", { userId })
-        .orWhere("task.assignees ILIKE :userIdPattern", { userIdPattern: `%${userId}%` });
+        .where('task.creatorId = :userId', { userId })
+        .orWhere('task.assignees ILIKE :userIdPattern', { userIdPattern: `%${userId}%` });
     }
 
     queryBuilder.skip(skip).take(limit);
@@ -131,16 +214,25 @@ export class TaskService {
     };
   }
 
-  async getById(task_id: string): Promise<Task> {
-    const query = this.taskRepository.createQueryBuilder("task")
-      .leftJoinAndSelect("task.comments", "comments")
-      .andWhere("task.id = :id", { id: task_id })
+  async getById(payload: TaskAccessRpcPayload): Promise<Task> {
+    const query = this.taskRepository
+      .createQueryBuilder('task')
+      .leftJoinAndSelect('task.comments', 'comments')
+      .andWhere('task.id = :id', { id: payload.taskId });
+
     const task = await query.getOne();
     if (!task) throw new TaskNotFoundRpcException();
+
+    this.assertTaskVisible(task, payload.userId, payload.requesterRole);
+
     return task;
   }
 
   async assignUser(data: AssignTaskPayload): Promise<Task> {
+    if (this.normalizeRole(data.requesterRole) === UserRole.USER) {
+      throw new ForbiddenRpcException();
+    }
+
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
 
     if (!task) throw new TaskNotFoundRpcException();
@@ -158,12 +250,12 @@ export class TaskService {
         action: ActionType.ASSIGNED,
         changes: {
           old: { assignees: oldAssignees },
-          new: { assignees: task.assignees }
+          new: { assignees: task.assignees },
         },
-        changedBy: data.assignerId
+        changedBy: data.assignerId,
       });
 
-      const payload: TaskNotificationPayload = {
+      const payloadNotify: TaskNotificationPayload = {
         actorId: data.assignerId,
         creatorId: savedTask.creatorId,
         timestamp: new Date().toISOString(),
@@ -171,15 +263,19 @@ export class TaskService {
         task: {
           ...this.buildTaskNotifyShape(savedTask),
         },
-        action: ActionType.ASSIGNED
+        action: ActionType.ASSIGNED,
       };
 
-      this.notificationClient.emit("task.assigned", payload);
+      this.notificationClient.emit('task.assigned', payloadNotify);
     }
     return task;
   }
 
   async unassignUser(data: AssignTaskPayload): Promise<Task> {
+    if (this.normalizeRole(data.requesterRole) === UserRole.USER) {
+      throw new ForbiddenRpcException();
+    }
+
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
 
     if (!task) throw new TaskNotFoundRpcException();
@@ -189,21 +285,20 @@ export class TaskService {
     if (task.assignees.includes(data.assigneeId)) {
       const oldAssignees = [...task.assignees];
 
-      task.assignees = task.assignees.filter(a => a !== data.assigneeId);
+      task.assignees = task.assignees.filter((a) => a !== data.assigneeId);
       const savedTask = await this.taskRepository.save(task);
-
 
       await this.historyRepository.save({
         taskId: task.id,
         action: ActionType.ASSIGNED,
         changes: {
           old: { assignees: oldAssignees },
-          new: { assignees: task.assignees }
+          new: { assignees: task.assignees },
         },
-        changedBy: data.assignerId
+        changedBy: data.assignerId,
       });
 
-      const payload: TaskNotificationPayload = {
+      const payloadNotify: TaskNotificationPayload = {
         actorId: data.assignerId,
         creatorId: savedTask.creatorId,
         timestamp: new Date().toISOString(),
@@ -211,18 +306,17 @@ export class TaskService {
         task: {
           ...this.buildTaskNotifyShape(savedTask),
         },
-        action: ActionType.ASSIGNED
+        action: ActionType.ASSIGNED,
       };
 
-      this.notificationClient.emit("task.updated", payload);
+      this.notificationClient.emit('task.updated', payloadNotify);
     }
 
     return task;
   }
 
-
   async comment(data: CreateCommentPayload): Promise<Comment> {
-    const task = await this.taskRepository.findOne({ where: { id: data.taskId } })
+    const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
     if (!task) throw new TaskNotFoundRpcException();
 
     const createdComment = await this.commentService.create(data);
@@ -232,9 +326,9 @@ export class TaskService {
       action: ActionType.COMMENT,
       changes: {
         old: {},
-        new: { content: data.content }
+        new: { content: data.content },
       },
-      changedBy: data.authorId
+      changedBy: data.authorId,
     });
 
     let recipients: string[] = [task.creatorId];
@@ -245,9 +339,9 @@ export class TaskService {
       }
     }
 
-    recipients = Array.from(new Set(recipients)).filter(r => !!r && r !== data.authorId);
+    recipients = Array.from(new Set(recipients)).filter((r) => !!r && r !== data.authorId);
 
-    const payload: TaskNotificationPayload = {
+    const notifyPayload: TaskNotificationPayload = {
       actorId: data.authorId,
       creatorId: task.creatorId,
       timestamp: new Date().toISOString(),
@@ -255,33 +349,29 @@ export class TaskService {
       task: this.buildTaskNotifyShape(task),
       comment: {
         authorId: data.authorId,
-        content: data.content
+        content: data.content,
       },
       action: ActionType.COMMENT,
-    }
-    this.notificationClient.emit("task.comment", payload)
+    };
+    this.notificationClient.emit('task.comment', notifyPayload);
+
     return createdComment;
   }
 
-  async getTaskHistory(data: TaskHistoryPayload & PaginationQueryPayload): Promise<PaginationResultDto<ResponseTaskHistoryDto[]>> {
+  async getTaskHistory(data: TaskHistoryPayload): Promise<PaginationResultDto<ResponseTaskHistoryDto[]>> {
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
     if (!task) throw new TaskNotFoundRpcException();
 
-    const isCreator = task.creatorId === data.userId;
-    const isAssignee = task.assignees?.includes(data.userId) ?? false;
-
-    if (!isCreator && !isAssignee) {
-      throw new UnauthorizedRpcException("Você não tem permissão para acessar o histórico desta tarefa");
-    }
+    this.assertTaskVisible(task, data.userId, data.requesterRole);
 
     const { limit = 10, page = 1 } = data;
 
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.historyRepository
-      .createQueryBuilder("taskHistory")
-      .where("taskHistory.taskId = :taskId", { taskId: data.taskId })
-      .orderBy("taskHistory.changedAt", "DESC")
+      .createQueryBuilder('taskHistory')
+      .where('taskHistory.taskId = :taskId', { taskId: data.taskId })
+      .orderBy('taskHistory.changedAt', 'DESC')
       .skip(skip)
       .take(limit);
 
@@ -292,17 +382,25 @@ export class TaskService {
       const oldObj = changes.old || {};
       const newObj = changes.new || {};
 
-      let content = "";
+      let content = '';
 
       switch (h.action) {
         case ActionType.ASSIGNED: {
-          const oldAssignees = Array.isArray(oldObj.assignees) ? oldObj.assignees : (oldObj.assignees ? [oldObj.assignees] : []);
-          const newAssignees = Array.isArray(newObj.assignees) ? newObj.assignees : (newObj.assignees ? [newObj.assignees] : []);
+          const oldAssignees = Array.isArray(oldObj.assignees)
+            ? oldObj.assignees
+            : oldObj.assignees
+              ? [oldObj.assignees]
+              : [];
+          const newAssignees = Array.isArray(newObj.assignees)
+            ? newObj.assignees
+            : newObj.assignees
+              ? [newObj.assignees]
+              : [];
           const oldSet = new Set(oldAssignees);
           const newSet = new Set(newAssignees);
 
-          const added = newAssignees.filter(a => !oldSet.has(a));
-          const removed = oldAssignees.filter(a => !newSet.has(a));
+          const added = newAssignees.filter((a) => !oldSet.has(a));
+          const removed = oldAssignees.filter((a) => !newSet.has(a));
           if (added.length && !removed.length) {
             content = added.length === 1 ? `adicionou ${added[0]}` : `adicionou ${added.length}`;
           } else if (removed.length && !added.length) {
@@ -321,10 +419,10 @@ export class TaskService {
 
         case ActionType.STATUS_CHANGE: {
           const STATUS_LABELS: Record<string, string> = {
-            TODO: "A Fazer",
-            IN_PROGRESS: "Em Progresso",
-            REVIEW: "Em Revisão",
-            DONE: "Concluído",
+            TODO: 'A Fazer',
+            IN_PROGRESS: 'Em Progresso',
+            REVIEW: 'Em Revisão',
+            DONE: 'Concluído',
           };
 
           content = `mudou o status para ${STATUS_LABELS[newObj.status] ?? 'desconhecido'}`;
@@ -373,11 +471,14 @@ export class TaskService {
 
   private computeChanges(task: Task, data: UpdateTaskPayload): AuditChanges {
     const changes: AuditChanges = { old: {}, new: {} };
-    const { taskId, authorId, ...fieldsToUpdate } = data;
+    const { taskId, authorId, requesterRole, ...fieldsToUpdate } = data;
+    void taskId;
+    void authorId;
+    void requesterRole;
 
     for (const key of Object.keys(fieldsToUpdate)) {
       const newValue = fieldsToUpdate[key];
-      const oldValue = task[key];
+      const oldValue = (task as unknown as Record<string, unknown>)[key];
 
       if (newValue !== undefined && newValue !== oldValue) {
         changes.old[key] = oldValue;
@@ -401,19 +502,18 @@ export class TaskService {
       taskId,
       action,
       changes,
-      changedBy: authorId
+      changedBy: authorId,
     });
   }
 
   private notifyUpdate(task: Task, changes: AuditChanges, authorId: string) {
-    const recipients = [
-      ...(task.assignees || []),
-      task.creatorId
-    ].filter((userId) => userId !== authorId);
+    const recipients = [...(task.assignees || []), task.creatorId].filter(
+      (rid) => rid !== authorId,
+    );
 
-    const action = (changes.new as any).status ? ActionType.STATUS_CHANGE : ActionType.UPDATE;
+    const action = (changes.new as { status?: unknown }).status ? ActionType.STATUS_CHANGE : ActionType.UPDATE;
 
-    const payload: TaskNotificationPayload = {
+    const notifyPayload: TaskNotificationPayload = {
       actorId: authorId,
       creatorId: task.creatorId,
       timestamp: new Date().toISOString(),
@@ -422,6 +522,6 @@ export class TaskService {
       action,
     };
 
-    this.notificationClient.emit("task.updated", payload);
+    this.notificationClient.emit('task.updated', notifyPayload);
   }
 }

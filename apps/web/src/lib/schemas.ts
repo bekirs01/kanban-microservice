@@ -8,11 +8,12 @@ export function buildLoginSchema(t: TranslateFn) {
   });
 }
 
-export function buildRegisterSchema(t: TranslateFn) {
+export function buildSignupRequestSchema(t: TranslateFn) {
   return z.object({
     username: z.string().min(3, t("validation.usernameMin")),
     email: z.string().email(t("validation.emailInvalid")),
     password: z.string().min(6, t("validation.passwordMin")),
+    requestedRole: z.union([z.literal("USER"), z.literal("MANAGER")]),
   });
 }
 
@@ -37,7 +38,9 @@ export function buildCommentSchema(t: TranslateFn) {
 }
 
 export type LoginFormData = z.infer<ReturnType<typeof buildLoginSchema>>;
-export type RegisterFormData = z.infer<ReturnType<typeof buildRegisterSchema>>;
+export type SignupRequestFormData = z.infer<
+  ReturnType<typeof buildSignupRequestSchema>
+>;
 export type CreateTaskFormData = z.infer<
   ReturnType<typeof buildCreateTaskSchema>
 >;

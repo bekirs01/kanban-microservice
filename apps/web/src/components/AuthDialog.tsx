@@ -8,18 +8,34 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useTranslation } from "@/i18n/useTranslation";
+import { useAuth } from "@/hooks/useAuth";
 import {
   buildLoginSchema,
-  buildRegisterSchema,
+  buildSignupRequestSchema,
   type LoginFormData,
-  type RegisterFormData,
+  type SignupRequestFormData,
 } from "@/lib/schemas";
+import type { SubmitRegistrationRequestDto } from "@challenge/types";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+
+const SIGNUP_ROLE_OPTIONS = ["USER", "MANAGER"] as const;
+
+const ROLE_TRANSLATION_KEYS: Record<(typeof SIGNUP_ROLE_OPTIONS)[number], string> = {
+  MANAGER: "admin.role.manager",
+  USER: "admin.role.user",
+};
 
 interface AuthDialogProps {
   open: boolean;
@@ -28,16 +44,17 @@ interface AuthDialogProps {
 
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const { login, register: registerUser } = useAuth();
+  const { login, submitRegistrationRequest } = useAuth();
 
   const loginResolver = useMemo(
     () => zodResolver(buildLoginSchema(t)),
     [t],
   );
 
-  const registerResolver = useMemo(
-    () => zodResolver(buildRegisterSchema(t)),
+  const signupResolver = useMemo(
+    () => zodResolver(buildSignupRequestSchema(t)),
     [t],
   );
 
@@ -51,12 +68,22 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   });
 
   const {
-    register: registerRegisterForm,
-    handleSubmit: handleRegisterSubmit,
-    formState: { errors: registerErrors, isSubmitting: isRegisterSubmitting },
-    reset: resetRegister,
-  } = useForm<RegisterFormData>({
-    resolver: registerResolver,
+    control: signupControl,
+    register: registerSignupForm,
+    handleSubmit: handleSignupSubmitForm,
+    formState: {
+      errors: signupErrors,
+      isSubmitting: isSignupSubmitting,
+    },
+    reset: resetSignup,
+  } = useForm<SignupRequestFormData>({
+    resolver: signupResolver,
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+      requestedRole: "USER",
+    },
   });
 
   const onLoginSubmit = async (data: LoginFormData) => {
@@ -65,34 +92,45 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       toast.success(t("auth.loginToastSuccess"));
       onOpenChange(false);
       resetLogin();
-    } catch (error: any) {
-      toast.error(
-        typeof error?.response?.data?.message === "string"
-          ? error.response.data.message
-          : t("auth.loginErrorFallback"),
-      );
+    } catch (error: unknown) {
+      const msg =
+        typeof (error as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message === "string"
+          ? (error as { response: { data: { message: string } } }).response.data
+              .message
+          : t("auth.loginErrorFallback");
+      toast.error(msg);
     }
   };
 
-  const onRegisterSubmit = async (data: RegisterFormData) => {
+  const onSignupSubmit = async (data: SignupRequestFormData) => {
     try {
-      await registerUser(data);
-      toast.success(t("auth.registerToastSuccess"));
+      await submitRegistrationRequest({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        requestedRole:
+          data.requestedRole as SubmitRegistrationRequestDto["requestedRole"],
+      });
+      toast.success(t("auth.registrationSubmitted"));
       onOpenChange(false);
-      resetRegister();
-    } catch (error: any) {
-      toast.error(
-        typeof error?.response?.data?.message === "string"
-          ? error.response.data.message
-          : t("auth.registerErrorFallback"),
-      );
+      resetSignup();
+      navigate({ to: "/login" });
+    } catch (error: unknown) {
+      const msg =
+        typeof (error as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message === "string"
+          ? (error as { response: { data: { message: string } } }).response.data
+              .message
+          : t("auth.registerErrorFallback");
+      toast.error(msg);
     }
   };
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
     resetLogin();
-    resetRegister();
+    resetSignup();
   };
 
   return (
@@ -167,7 +205,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           </form>
         ) : (
           <form
-            onSubmit={handleRegisterSubmit(onRegisterSubmit)}
+            onSubmit={handleSignupSubmitForm(onSignupSubmit)}
             className="space-y-4"
           >
             <div className="space-y-2">
@@ -175,11 +213,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               <Input
                 id="username"
                 placeholder={t("auth.usernamePlaceholder")}
-                {...registerRegisterForm("username")}
+                {...registerSignupForm("username")}
               />
-              {registerErrors.username && (
+              {signupErrors.username && (
                 <p className="text-sm text-destructive">
-                  {registerErrors.username.message}
+                  {signupErrors.username.message}
                 </p>
               )}
             </div>
@@ -190,11 +228,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 id="reg-email"
                 type="email"
                 placeholder={t("auth.emailPlaceholder")}
-                {...registerRegisterForm("email")}
+                {...registerSignupForm("email")}
               />
-              {registerErrors.email && (
+              {signupErrors.email && (
                 <p className="text-sm text-destructive">
-                  {registerErrors.email.message}
+                  {signupErrors.email.message}
                 </p>
               )}
             </div>
@@ -205,11 +243,38 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 id="reg-password"
                 type="password"
                 placeholder={t("auth.passwordPlaceholderMasked")}
-                {...registerRegisterForm("password")}
+                {...registerSignupForm("password")}
               />
-              {registerErrors.password && (
+              {signupErrors.password && (
                 <p className="text-sm text-destructive">
-                  {registerErrors.password.message}
+                  {signupErrors.password.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("auth.requestedRoleLabel")}</Label>
+              <Controller
+                name="requestedRole"
+                control={signupControl}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SIGNUP_ROLE_OPTIONS.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {t(ROLE_TRANSLATION_KEYS[role])}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {signupErrors.requestedRole && (
+                <p className="text-sm text-destructive">
+                  {signupErrors.requestedRole.message}
                 </p>
               )}
             </div>
@@ -218,11 +283,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isRegisterSubmitting}
+                disabled={isSignupSubmitting}
               >
-                {isRegisterSubmitting
+                {isSignupSubmitting
                   ? t("common.creatingAccount")
-                  : t("auth.registerButton")}
+                  : t("auth.submitSignupRequest")}
               </Button>
               <Button
                 type="button"

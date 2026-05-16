@@ -12,6 +12,7 @@ services:
       DB_NAME: ${RAILWAY_DB_NAME}
       DB_SSL: ${DB_SSL:-false}
       JWT_SECRET: ${JWT_SECRET:-jungle_super_secret_key_123}
+      RABBITMQ_URI: ${RABBITMQ_URI:-amqp://admin:admin@rabbitmq:5672}
 
   tasks-service:
     depends_on:

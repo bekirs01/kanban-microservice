@@ -1,6 +1,6 @@
 import type {
   LoginAuthDto,
-  RegisterAuthDto,
+  SubmitRegistrationRequestDto,
   ResponseAuthDto,
 } from "@challenge/types";
 import {
@@ -10,6 +10,7 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { AdminPage } from "./pages/AdminPage";
 import { KanbanPage } from "./pages/KanbanPage";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -21,8 +22,10 @@ interface AuthContext {
   isLoading: boolean;
   user: User | null;
   login: (credentials: LoginAuthDto) => Promise<void>;
-  register: (credentials: RegisterAuthDto) => Promise<void>;
-  logout: () => void;
+  submitRegistrationRequest: (
+    dto: SubmitRegistrationRequestDto,
+  ) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 interface RouterContext {
@@ -70,7 +73,20 @@ const kanbanRoute = createRoute({
   },
 });
 
-// Index route - redirect to kanban or login
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: AdminPage,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    if (context.auth.user?.role !== "ADMIN") {
+      throw redirect({ to: "/kanban" });
+    }
+  },
+});
+
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -89,6 +105,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   registerRoute,
   kanbanRoute,
+  adminRoute,
 ]);
 
 export const router = createRouter({
@@ -99,8 +116,8 @@ export const router = createRouter({
       isLoading: false,
       user: null,
       login: async () => {},
-      register: async () => {},
-      logout: () => {},
+      submitRegistrationRequest: async () => {},
+      logout: async () => {},
     },
   },
 });

@@ -1,7 +1,8 @@
-import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Inject, Query, Req, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { isBoardElevated, normalizeRequesterRole } from '../common/rbac';
 
 @ApiTags('users')
 @ApiBearerAuth()
@@ -14,7 +15,10 @@ export class UsersController {
   @ApiOperation({ summary: 'Batch buscar usuários por IDs' })
   @ApiQuery({ name: 'ids', required: true, description: 'Lista de IDs separada por vírgula' })
   @ApiResponse({ status: 200, description: 'Usuários retornados.' })
-  async getManyByIds(@Query('ids') idsParam: string) {
+  async getManyByIds(@Req() req: any, @Query('ids') idsParam: string) {
+    const role = normalizeRequesterRole(req.user?.role);
+    if (!isBoardElevated(role)) throw new ForbiddenException();
+
     const ids = (idsParam ?? '')
       .split(',')
       .map((s) => s.trim())

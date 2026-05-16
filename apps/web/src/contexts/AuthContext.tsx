@@ -1,12 +1,19 @@
 import type {
   LoginAuthDto,
-  RegisterAuthDto,
   ResponseUserDto,
+  SubmitRegistrationRequestDto,
+  UserRole,
 } from "@challenge/types";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { queryClient } from "../providers/QueryProvider";
 import { authService } from "../services/auth.service";
+import { submitRegistrationRequestApi } from "../services/registration-request.service";
 import { AuthContext } from "./auth-context";
+
+function isApiUserRole(raw: unknown): raw is UserRole {
+  return raw === "USER" || raw === "MANAGER" || raw === "ADMIN";
+}
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -23,9 +30,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (token && storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
-        } catch (error) {
-          console.error("Failed to parse stored user:", error);
+          const parsed = JSON.parse(storedUser) as ResponseUserDto;
+          parsed.role = isApiUserRole(parsed.role)
+            ? parsed.role
+            : ("USER" as UserRole);
+          setUser(parsed);
+        } catch {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
           localStorage.removeItem("user");
@@ -35,7 +45,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(false);
     };
 
-    initAuth();
+    void initAuth();
   }, []);
 
   const login = async (credentials: LoginAuthDto) => {
@@ -43,23 +53,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authService.login(credentials);
       setUser(response.user);
     } catch (error) {
-      console.error("Login failed:", error);
       throw error;
     }
   };
 
-  const register = async (credentials: RegisterAuthDto) => {
-    try {
-      const response = await authService.register(credentials);
-      setUser(response.user);
-    } catch (error) {
-      console.error("Registration failed:", error);
-      throw error;
-    }
+  const submitRegistrationRequest = async (dto: SubmitRegistrationRequestDto) => {
+    await submitRegistrationRequestApi(dto);
   };
 
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await authService.logout();
+    queryClient.clear();
     setUser(null);
   };
 
@@ -70,7 +74,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAuthenticated: !!user,
         isLoading,
         login,
-        register,
+        submitRegistrationRequest,
         logout,
       }}
     >

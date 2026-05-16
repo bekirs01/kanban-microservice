@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { UserRole } from '../../enums';
 
 export class CreateCommentDto {
   @ApiProperty({
@@ -14,6 +15,7 @@ export class CreateCommentDto {
 }
 
 export interface CreateCommentPayload extends CreateCommentDto {
-  taskId: string,
-  authorId: string
+  taskId: string;
+  authorId: string;
+  requesterRole?: UserRole;
 }

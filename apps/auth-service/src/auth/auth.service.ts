@@ -15,10 +15,12 @@ export class AuthService {
   ) { }
 
   async login(dto: LoginAuthPayload): Promise<ResponseAuthDto> {
-    const user = await this.userService.getByEmail(dto.email);
+    let user = await this.userService.getByEmail(dto.email);
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
 
     if (!isMatch) throw new UnauthorizedRpcException("Email/Senha incorretos ou inválidos");
+
+    user = await this.userService.promoteBootstrapIfNeeded(user);
 
     const accessToken: string = await this.generateAccessToken(user);
     const refreshToken: string = await this.generateRefreshToken(user);
@@ -28,21 +30,18 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email
-      }
-    }
+      user: this.mapAuthUser(user)
+    };
   }
 
   async register(dto: RegisterAuthPayload): Promise<ResponseAuthDto> {
-    const user = await this.userService.create(dto)
+    let user = await this.userService.create(dto);
+    user = await this.userService.promoteBootstrapIfNeeded(user);
 
     const [accessToken, refreshToken] = await Promise.all([
       this.generateAccessToken(user),
-      this.generateRefreshToken(user)
-    ])
+      this.generateRefreshToken(user),
+    ]);
 
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
     await this.userService.update(user.id, { refreshTokenHash });
@@ -50,12 +49,8 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email
-      }
-    }
+      user: this.mapAuthUser(user),
+    };
   }
 
   async refresh(payload: RefreshAuthPayload): Promise<ResponseAuthDto> {
@@ -64,10 +59,12 @@ export class AuthService {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
-      const user = await this.userService.getById(decodedJwt.sub);
+      let user = await this.userService.getById(decodedJwt.sub);
 
       const isMatch = await bcrypt.compare(payload.refreshToken, user.refreshTokenHash);
       if (!isMatch) throw new RefreshTokenReuseException("Refresh token inválido ou reutilizado");
+
+      user = await this.userService.promoteBootstrapIfNeeded(user);
 
       const accessToken = await this.generateAccessToken(user);
       const refreshToken = await this.generateRefreshToken(user);
@@ -78,12 +75,8 @@ export class AuthService {
       return {
         accessToken,
         refreshToken,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email
-        }
-      }
+        user: this.mapAuthUser(user),
+      };
     } catch (error) {
 
       if (error instanceof RpcException) {
@@ -109,12 +102,21 @@ export class AuthService {
     }
   }
 
+  private mapAuthUser(user: User) {
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+    };
+  }
+
   private async generateAccessToken(user: User) {
-    const payload: Omit<JwtTokenPayload, "iat" | "exp"> = { sub: user.id, username: user.username };
-    return this.jwtService.sign(payload, { expiresIn: "15m" })
+    const payload: Omit<JwtTokenPayload, "iat" | "exp"> = { sub: user.id, username: user.username, role: user.role };
+    return this.jwtService.sign(payload, { expiresIn: "15m" });
   }
   private async generateRefreshToken(user: User) {
-    const payload: Omit<JwtTokenPayload, "iat" | "exp"> = { sub: user.id, username: user.username };
-    return this.jwtService.sign(payload, { expiresIn: "7d" })
+    const payload: Omit<JwtTokenPayload, "iat" | "exp"> = { sub: user.id, username: user.username, role: user.role };
+    return this.jwtService.sign(payload, { expiresIn: "7d" });
   }
 }

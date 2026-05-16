@@ -51,7 +51,8 @@ api.interceptors.response.use(
       !originalRequest._retry &&
       !originalRequest.url?.includes('/auth/refresh') &&
       !originalRequest.url?.includes('/auth/login') &&
-      !originalRequest.url?.includes('/auth/register')
+      !originalRequest.url?.includes('/auth/register') &&
+      !originalRequest.url?.includes('/auth/register-request')
     ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -84,8 +85,15 @@ api.interceptors.response.use(
           refreshToken,
         });
 
-        const { accessToken } = response.data;
+        const { accessToken, refreshToken: newRefreshToken, user: nextUser } =
+          response.data;
         localStorage.setItem('accessToken', accessToken);
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
+        if (nextUser) {
+          localStorage.setItem('user', JSON.stringify(nextUser));
+        }
         try {
           queryClient.setQueryData(['auth', 'tokens'], (old: any) => ({
             accessToken,

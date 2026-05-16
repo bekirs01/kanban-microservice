@@ -1,7 +1,7 @@
-import { TaskNotFoundRpcException, UnauthorizedRpcException } from "@challenge/exceptions";
-import { CreateCommentPayload } from "@challenge/types";
-import { Inject, Injectable } from "@nestjs/common";
-import { ClientProxy } from "@nestjs/microservices";
+import { ForbiddenRpcException, TaskNotFoundRpcException } from "@challenge/exceptions";
+import type { CreateCommentPayload } from "@challenge/types";
+import { UserRole } from "@challenge/types";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Task } from "src/task/entity/task.entity";
 import { Repository } from "typeorm";
@@ -12,28 +12,52 @@ export class CommentService {
   constructor(
     @InjectRepository(Comment) private commentRepository: Repository<Comment>,
     @InjectRepository(Task) private taskRepository: Repository<Task>,
-    @Inject("NOTIFICATION_SERVICE") private readonly notificationClient: ClientProxy
   ) { }
+
+  private normalizeRole(role?: string): UserRole {
+    if (role === UserRole.ADMIN || role === UserRole.MANAGER || role === UserRole.USER) {
+      return role;
+    }
+    return UserRole.USER;
+  }
+
+  private isElevated(role: UserRole): boolean {
+    return role === UserRole.ADMIN || role === UserRole.MANAGER;
+  }
+
+  private canParticipate(task: Task, userId: string): boolean {
+    return task.creatorId === userId || (task.assignees || []).includes(userId);
+  }
+
+  private assertTaskVisible(task: Task, userId: string, roleHint?: string): void {
+    const role = this.normalizeRole(roleHint);
+    if (this.isElevated(role)) return;
+    if (!this.canParticipate(task, userId)) {
+      throw new ForbiddenRpcException();
+    }
+  }
 
   async create(data: CreateCommentPayload): Promise<Comment> {
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
     if (!task) throw new TaskNotFoundRpcException();
 
-    const savedComment = await this.commentRepository.save(data);
+    const role = this.normalizeRole(data.requesterRole);
+    if (!this.isElevated(role)) {
+      this.assertTaskVisible(task, data.authorId, data.requesterRole);
+    }
+
+    const { requesterRole, ...row } = data;
+    void requesterRole;
+    const savedComment = await this.commentRepository.save(row);
 
     return savedComment;
   }
 
-  async getByTaskId(taskId: string, userId: string): Promise<Comment[]> {
+  async getByTaskId(taskId: string, userId: string, requesterRole?: string): Promise<Comment[]> {
     const task = await this.taskRepository.findOne({ where: { id: taskId } });
     if (!task) throw new TaskNotFoundRpcException();
 
-    const isCreator = task.creatorId === userId;
-    const isAssignee = task.assignees?.includes(userId) ?? false;
-
-    if (!isCreator && !isAssignee) {
-      throw new UnauthorizedRpcException("Você não tem permissão para acessar os comentários desta tarefa");
-    }
+    this.assertTaskVisible(task, userId, requesterRole);
 
     const comments = await this.commentRepository.find({
       where: { taskId },

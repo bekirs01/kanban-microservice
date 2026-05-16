@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNotEmpty, IsUUID } from "class-validator";
+import { UserRole } from "../../enums";
 
 export class AssignTaskDto {
   @ApiProperty({ example: 'uuid-do-usuario', description: 'ID do usuário a ser atribuído' })
@@ -9,6 +10,7 @@ export class AssignTaskDto {
 }
 
 export interface AssignTaskPayload extends AssignTaskDto {
-  taskId: string,
-  assignerId: string
+  taskId: string;
+  assignerId: string;
+  requesterRole?: UserRole;
 }

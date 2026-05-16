@@ -16,6 +16,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useAllUsers } from "@/hooks/useAllUsers";
+import { useAuth } from "@/hooks/useAuth";
 import { useTaskComments } from "@/hooks/useTaskComments";
 import { useTaskHistory } from "@/hooks/useTaskHistory";
 import {
@@ -39,6 +40,7 @@ import {
   getFirstName,
   mapTaskToForm,
 } from "@/lib/taskDetailUtils";
+import { canManageAssignments } from "@/lib/rbac";
 import type { TaskPriority } from "@challenge/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
@@ -60,6 +62,9 @@ export function TaskDetailDialog({
   onOpenChange,
 }: TaskDetailDialogProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const manageAssignments = canManageAssignments(user?.role);
+
   const commentSchemaDyn = useMemo(() => buildCommentSchema(t), [t]);
   const updateTaskSchemaDyn = useMemo(() => buildUpdateTaskSchema(t), [t]);
 
@@ -130,7 +135,7 @@ export function TaskDetailDialog({
   const [openAssign, setOpenAssign] = useState(false);
 
   const { data: allUsers = [], isLoading: isLoadingAllUsers } =
-    useAllUsers(true);
+    useAllUsers(manageAssignments);
 
   const assignMutation = useAssignTask();
   const unassignMutation = useUnassignTask();
@@ -288,6 +293,7 @@ export function TaskDetailDialog({
           taskId={taskId}
           isLoading={isLoading}
           isEditing={isEditing}
+          canEditOrDelete={manageAssignments}
           onStartEdit={() => setIsEditing(true)}
           onCancelEdit={() => {
             if (task) resetTask(mapTaskToForm(task));
@@ -376,6 +382,7 @@ export function TaskDetailDialog({
               handleToggleAssign={handleToggleAssign}
               handleRemoveAssignee={handleRemoveAssignee}
               removingAssignee={removingAssignee}
+              manageAssignments={manageAssignments}
             />
 
             <Separator />

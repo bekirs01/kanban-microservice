@@ -1,4 +1,6 @@
 
+import { UserRole } from '../../enums';
+
 export class ResponseAuthDto {
   accessToken: string;
   refreshToken: string;
@@ -6,5 +8,6 @@ export class ResponseAuthDto {
     id: string,
     username: string,
     email: string,
+    role: UserRole,
   }
 }

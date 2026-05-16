@@ -1,4 +1,9 @@
-import { ActionType, TaskNotificationPayload, type KanbanBoardChangeDto } from '@challenge/types';
+import { ActionType } from "@challenge/types";
+import type {
+  KanbanBoardChangeDto,
+  RegistrationPendingNotificationPayload,
+  TaskNotificationPayload,
+} from "@challenge/types";
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -113,6 +118,21 @@ export class NotificationsService {
       });
     }
     this.emitBoard(payload, 'comment');
+  }
+
+  async notifyRegistrationPending(payload: RegistrationPendingNotificationPayload) {
+    const title = "Registration awaiting approval";
+    const content = `${payload.applicantUsername} (${payload.applicantEmail}) requested role ${payload.requestedRole}`;
+    for (const userId of payload.adminUserIds) {
+      const notification = await this.saveNotification(userId, title, content);
+
+      this.wsGateway.notifyUser(userId, "registration:pending", {
+        content: notification.content,
+        title: notification.title,
+        registrationRequestId: payload.requestId,
+        requestedRole: payload.requestedRole,
+      });
+    }
   }
 
   private emitBoard(payload: TaskNotificationPayload, reason: KanbanBoardChangeDto['reason']) {
