@@ -38,6 +38,10 @@ export async function patchAdminUserRole(
   return data;
 }
 
+export async function deleteAdminUser(userId: string): Promise<void> {
+  await api.delete(`/api/admin/users/${userId}`);
+}
+
 export async function listPendingRegistrationRequests(): Promise<
   ListedPendingRegistrationDto[]
 > {

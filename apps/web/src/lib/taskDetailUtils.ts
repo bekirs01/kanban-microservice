@@ -45,42 +45,108 @@ export const getFirstName = (fullName?: string): string => {
   return fullName.split(" ")[0] ?? "";
 };
 
+function normalizeAssignees(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (value === undefined || value === null || value === "") return [];
+  return [String(value)];
+}
+
+const STATUS_TO_I18N: Record<string, string> = {
+  TODO: "board.columns.todo",
+  IN_PROGRESS: "board.columns.inProgress",
+  REVIEW: "board.columns.review",
+  DONE: "board.columns.done",
+};
+
+function resolveUserNames(
+  ids: string[],
+  referencedUsers: { id?: string; username?: string }[],
+): string {
+  const idToName = (id: string) => {
+    const u = referencedUsers.find((x) => x?.id === id);
+    return u?.username ?? id;
+  };
+  return ids.map(idToName).join(", ");
+}
+
 export const formatChangedFields = (
   entry: Record<string, unknown>,
   referencedUsers: { id?: string; username?: string }[] = [],
   t: TranslateLookup,
 ): string => {
   const raw = entry.rawChanges ?? entry.raw_changes ?? entry.changes;
-  const content = entry.content ?? entry.contentHtml ?? entry.message;
-  if (content) {
-    if (typeof content === "string") {
-      try {
-        const actionRaw = entry.action ?? "";
-        const action = typeof actionRaw === "string" ? actionRaw.toUpperCase() : "";
-        if (action === "ASSIGNED") {
-          let mapped = content as string;
-          for (const u of referencedUsers) {
-            if (!u || !u.id) continue;
-            const username = u.username ?? u.id;
-            mapped = mapped.split(u.id).join(username);
-          }
-          return mapped;
-        }
-      } catch {
-        return content as string;
-      }
-      return content as string;
+  const rawTyped = raw as
+    | { old?: Record<string, unknown>; new?: Record<string, unknown> }
+    | null
+    | undefined;
+  const oldObj =
+    rawTyped?.old && typeof rawTyped.old === "object"
+      ? (rawTyped.old as Record<string, unknown>)
+      : {};
+  const newObj =
+    rawTyped?.new && typeof rawTyped.new === "object"
+      ? (rawTyped.new as Record<string, unknown>)
+      : {};
+
+  const actionRaw = entry.action;
+  const action = typeof actionRaw === "string" ? actionRaw.toUpperCase() : "";
+
+  const formatAssignedDescription = (): string => {
+    const oldAssignees = normalizeAssignees(oldObj.assignees);
+    const newAssignees = normalizeAssignees(newObj.assignees);
+    const oldSet = new Set(oldAssignees);
+    const newSet = new Set(newAssignees);
+    const added = newAssignees.filter((a) => !oldSet.has(a));
+    const removed = oldAssignees.filter((a) => !newSet.has(a));
+
+    if (added.length && !removed.length) {
+      return t("history.assignedAdded", {
+        names: resolveUserNames(added, referencedUsers),
+      });
     }
-    try {
-      if (Array.isArray(content)) return content.join(", ");
-      return JSON.stringify(content);
-    } catch {
-      return String(content);
+    if (removed.length && !added.length) {
+      return t("history.assignedRemoved", {
+        names: resolveUserNames(removed, referencedUsers),
+      });
     }
+    if (added.length && removed.length) {
+      return t("history.assignedBoth", {
+        added: resolveUserNames(added, referencedUsers),
+        removed: resolveUserNames(removed, referencedUsers),
+      });
+    }
+    return t("history.changeGeneric");
+  };
+
+  switch (action) {
+    case "ASSIGNED":
+      return formatAssignedDescription();
+    case "STATUS_CHANGE": {
+      const statusRaw = newObj.status;
+      const col =
+        typeof statusRaw === "string"
+          ? (STATUS_TO_I18N[statusRaw] ?? "board.columns.todo")
+          : "board.columns.todo";
+      return t("history.statusChanged", { status: t(col) });
+    }
+    case "UPDATE":
+      return t("history.fallbackUpdated");
+    case "CREATED": {
+      const titleRaw = newObj.title;
+      const title = typeof titleRaw === "string" ? titleRaw.trim() : "";
+      if (title) return t("history.createdTaskWithTitle", { title });
+      return t("history.createdTask");
+    }
+    case "COMMENT":
+      return t("history.commentAdded");
+    case "DELETE":
+      return t("history.deletedTask");
+    default:
+      break;
   }
+
   if (!raw) {
-    const action = typeof entry.action === "string" ? entry.action : "";
-    return action || t("history.fallbackUpdated");
+    return action ? t("history.changeGeneric") : t("history.fallbackUpdated");
   }
   const keys = Array.isArray(raw)
     ? raw

@@ -1,25 +1,38 @@
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/i18n/useTranslation";
 import {
   approveRegistrationRequest,
   createAdminUser,
+  deleteAdminUser,
   listAdminUsers,
   listPendingRegistrationRequests,
   patchAdminUserRole,
   rejectRegistrationRequest,
+  type AdminListedUser,
 } from "@/services/admin.service";
 import type { AdminCreateUserDto, UserRole } from "@challenge/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
 import type { FormEvent } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 const ROLE_OPTIONS = ["USER", "MANAGER", "ADMIN"] as UserRole[];
@@ -32,6 +45,7 @@ const ROLE_TRANSLATION_KEYS: Record<UserRole, string> = {
 
 export function AdminPage() {
   const { t } = useTranslation();
+  const { user: currentUser } = useAuth();
   const qc = useQueryClient();
   const [form, setForm] = useState<AdminCreateUserDto>({
     username: "",
@@ -40,6 +54,9 @@ export function AdminPage() {
     role: "USER" as UserRole,
   });
   const [roleEdits, setRoleEdits] = useState<Record<string, UserRole>>({});
+  const [deleteTarget, setDeleteTarget] = useState<AdminListedUser | null>(
+    null,
+  );
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["adminUsers"],
@@ -113,6 +130,20 @@ export function AdminPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["adminRegistrationRequests"] });
       toast.success(t("admin.requestRejected"));
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message;
+      toast.error(msg ?? t("common.error"));
+    },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (userId: string) => deleteAdminUser(userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["adminUsers"] });
+      toast.success(t("admin.userDeleted"));
+      setDeleteTarget(null);
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })
@@ -219,19 +250,20 @@ export function AdminPage() {
                 {t("common.loadingShort")}
               </p>
             ) : (
-              <div className="border rounded-xl overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="border rounded-xl overflow-x-auto">
+                <table className="w-full text-sm min-w-[720px]">
                   <thead className="bg-muted/60 text-left">
                     <tr>
                       <th className="px-3 py-2">{t("admin.username")}</th>
                       <th className="px-3 py-2">{t("admin.email")}</th>
                       <th className="px-3 py-2">{t("admin.roleLabel")}</th>
-                      <th className="px-3 py-2 w-[90px]" />
+                      <th className="px-3 py-2 min-w-[200px]" />
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((u) => {
                       const editing = roleEdits[u.id] ?? u.role;
+                      const isSelf = u.id === currentUser?.id;
                       return (
                         <tr key={u.id} className="border-t">
                           <td className="px-3 py-2">{u.username}</td>
@@ -259,19 +291,33 @@ export function AdminPage() {
                             </Select>
                           </td>
                           <td className="px-3 py-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              type="button"
-                              disabled={
-                                patchMut.isPending || editing === u.role
-                              }
-                              onClick={() =>
-                                patchMut.mutate({ id: u.id, role: editing })
-                              }
-                            >
-                              {t("admin.save")}
-                            </Button>
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                type="button"
+                                disabled={
+                                  patchMut.isPending || editing === u.role
+                                }
+                                onClick={() =>
+                                  patchMut.mutate({ id: u.id, role: editing })
+                                }
+                              >
+                                {t("admin.save")}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                type="button"
+                                disabled={deleteMut.isPending || isSelf}
+                                title={
+                                  isSelf ? t("admin.cannotDeleteSelf") : undefined
+                                }
+                                onClick={() => setDeleteTarget(u)}
+                              >
+                                {t("common.delete")}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -340,6 +386,40 @@ export function AdminPage() {
           )}
         </section>
       </main>
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("admin.confirmDeleteUserTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget
+                ? t("admin.confirmDeleteUserDescription", {
+                    username: deleteTarget.username,
+                  })
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteMut.isPending}
+              onClick={() => {
+                if (deleteTarget) deleteMut.mutate(deleteTarget.id);
+              }}
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

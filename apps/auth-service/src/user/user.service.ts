@@ -1,5 +1,5 @@
 import { ForbiddenRpcException, UserAlreadyExistsException, UserNotFoundException } from "@challenge/exceptions";
-import type { AdminCreateUserRpcPayload, AdminUpdateRoleRpcPayload } from "@challenge/types";
+import type { AdminCreateUserRpcPayload, AdminDeleteUserRpcPayload, AdminUpdateRoleRpcPayload } from "@challenge/types";
 import { PaginationQueryDto, PaginationResultDto, RegisterAuthPayload, ResponseUserDto, UpdateUserDto, UserRole } from "@challenge/types";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -221,5 +221,21 @@ export class UserService {
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
+  }
+
+  async adminDeleteUser(payload: AdminDeleteUserRpcPayload) {
+    await this.assertRequesterIsAdmin(payload.requesterUserId);
+
+    if (payload.requesterUserId === payload.targetUserId) {
+      throw new ForbiddenRpcException();
+    }
+
+    const target = await this.getById(payload.targetUserId);
+
+    if (target.role === UserRole.ADMIN) {
+      if ((await this.countRole(UserRole.ADMIN)) <= 1) throw new ForbiddenRpcException();
+    }
+
+    await this.userRepository.delete(payload.targetUserId);
   }
 }

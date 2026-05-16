@@ -2,6 +2,7 @@ import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -16,16 +17,27 @@ import { useTasks } from "@/hooks/useTasks";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { isAdminRole, sharedBoardQueryFlag } from "@/lib/rbac";
 import type { ResponseTaskDto } from "@challenge/types";
+import { format } from "date-fns";
 import { LogOut, Plus, Wifi, WifiOff } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+function deadlineToLocalYmd(deadline: string | Date): string {
+  const d = deadline instanceof Date ? deadline : new Date(deadline);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function KanbanPage() {
-  const { t, locale, setLanguage } = useTranslation();
+  const { t, locale, setLanguage, dateFnsLocale } = useTranslation();
   const { isConnected } = useWebSocket();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [deadlineFilterFrom, setDeadlineFilterFrom] = useState("");
+  const [deadlineFilterTo, setDeadlineFilterTo] = useState("");
 
   const { user, logout } = useAuth();
 
@@ -36,6 +48,44 @@ export function KanbanPage() {
   });
 
   const tasks = tasksData?.items || [];
+
+  const filteredTasks = useMemo(() => {
+    if (!deadlineFilterFrom || !deadlineFilterTo) return tasks;
+    let rangeStart = deadlineFilterFrom;
+    let rangeEnd = deadlineFilterTo;
+    if (rangeStart > rangeEnd) {
+      const swap = rangeStart;
+      rangeStart = rangeEnd;
+      rangeEnd = swap;
+    }
+    return tasks.filter((task) => {
+      if (!task.deadline) return false;
+      const ymd = deadlineToLocalYmd(task.deadline);
+      return ymd >= rangeStart && ymd <= rangeEnd;
+    });
+  }, [tasks, deadlineFilterFrom, deadlineFilterTo]);
+
+  const deadlineRangeSummary =
+    deadlineFilterFrom && deadlineFilterTo
+      ? (() => {
+          let fromKey = deadlineFilterFrom;
+          let toKey = deadlineFilterTo;
+          if (fromKey > toKey) {
+            const s = fromKey;
+            fromKey = toKey;
+            toKey = s;
+          }
+          const fromLabel = format(
+            new Date(`${fromKey}T12:00:00`),
+            "PP",
+            { locale: dateFnsLocale },
+          );
+          const toLabel = format(new Date(`${toKey}T12:00:00`), "PP", {
+            locale: dateFnsLocale,
+          });
+          return `${fromLabel} – ${toLabel}`;
+        })()
+      : null;
 
   const handleTaskClick = (task: ResponseTaskDto) => {
     setSelectedTaskId(task.id);
@@ -116,12 +166,55 @@ export function KanbanPage() {
 
       <div className="border-b bg-muted/50">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:justify-end gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+            <div className="flex flex-col gap-2 min-w-0">
+              <span className="text-sm font-medium text-foreground">
+                {t("board.deadlineRangeFilter")}
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="date"
+                  value={deadlineFilterFrom}
+                  onChange={(e) => setDeadlineFilterFrom(e.target.value)}
+                  aria-label={t("board.dateFilterFromAria")}
+                  className="w-[155px] shrink-0 bg-background"
+                />
+                <span className="text-muted-foreground text-sm">–</span>
+                <Input
+                  type="date"
+                  value={deadlineFilterTo}
+                  onChange={(e) => setDeadlineFilterTo(e.target.value)}
+                  aria-label={t("board.dateFilterToAria")}
+                  className="w-[155px] shrink-0 bg-background"
+                />
+                {deadlineFilterFrom && deadlineFilterTo ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      setDeadlineFilterFrom("");
+                      setDeadlineFilterTo("");
+                    }}
+                  >
+                    {t("board.clearDateFilter")}
+                  </Button>
+                ) : null}
+              </div>
+              {deadlineRangeSummary ? (
+                <p className="text-sm font-semibold text-foreground tracking-tight">
+                  {deadlineRangeSummary}
+                </p>
+              ) : null}
+            </div>
             {(user?.role ?? "USER") !== "USER" ? (
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t("board.addTask")}
-              </Button>
+              <div className="flex justify-end lg:justify-start shrink-0">
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("board.addTask")}
+                </Button>
+              </div>
             ) : null}
           </div>
         </div>
@@ -129,7 +222,7 @@ export function KanbanPage() {
 
       <main className="container mx-auto px-4 py-6">
         <KanbanBoard
-          tasks={tasks}
+          tasks={filteredTasks}
           isLoading={isLoading}
           onTaskClick={handleTaskClick}
           viewerId={user?.id}

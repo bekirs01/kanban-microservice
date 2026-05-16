@@ -40,6 +40,10 @@ export const trNested: MessageTree = {
     },
     greetingHello: "Merhaba, {username}",
     logoutToast: "Çıkış yapıldı.",
+    deadlineRangeFilter: "Bitiş tarihi aralığı",
+    dateFilterFromAria: "Başlangıç tarihi",
+    dateFilterToAria: "Bitiş tarihi",
+    clearDateFilter: "Filtreyi temizle",
   },
   task: {
     title: "Başlık",
@@ -201,6 +205,15 @@ export const trNested: MessageTree = {
     historyParticipantFallback: "katılımcı",
     dateRelativeToday: "Bugün",
     dateRelativeTomorrow: "Yarın",
+    commentAdded: "bir yorum ekledi.",
+    deletedTask: "görevi sildi.",
+    changeGeneric: "bir değişiklik yaptı.",
+    statusChanged: "durumu {status} olarak güncelledi.",
+    createdTask: "görevi oluşturdu.",
+    createdTaskWithTitle: "görevi oluşturdu: {title}.",
+    assignedAdded: "{names} ekledi.",
+    assignedRemoved: "{names} çıkardı.",
+    assignedBoth: "{added} ekledi; {removed} çıkardı.",
   },
   language: {
     labelEnglish: "English",
@@ -232,5 +245,10 @@ export const trNested: MessageTree = {
     requestRejected: "Kayıt reddedildi.",
     requestedAt: "İstek zamanı",
     onlyAdmins: "Sadece yöneticiler için.",
+    userDeleted: "Kullanıcı silindi.",
+    confirmDeleteUserTitle: "Bu hesabı silmek istiyor musunuz?",
+    confirmDeleteUserDescription:
+      "{username} için oturum erişimi kalıcı olarak kaldırılır. Bu işlem geri alınamaz.",
+    cannotDeleteSelf: "Kendi hesabınızı silemezsiniz.",
   },
 };

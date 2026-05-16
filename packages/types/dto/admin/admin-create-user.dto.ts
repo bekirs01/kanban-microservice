@@ -31,3 +31,8 @@ export interface AdminCreateUserRpcPayload extends AdminCreateUserDto {
 export interface AdminListUsersRpcPayload {
   requesterUserId: string;
 }
+
+export interface AdminDeleteUserRpcPayload {
+  requesterUserId: string;
+  targetUserId: string;
+}

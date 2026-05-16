@@ -40,6 +40,10 @@ export const ruNested: MessageTree = {
     },
     greetingHello: "Здравствуйте, {username}",
     logoutToast: "Вы вышли из системы.",
+    deadlineRangeFilter: "Диапазон дедлайна",
+    dateFilterFromAria: "Дата начала",
+    dateFilterToAria: "Дата окончания",
+    clearDateFilter: "Сбросить фильтр",
   },
   task: {
     title: "Название",
@@ -200,6 +204,15 @@ export const ruNested: MessageTree = {
     historyParticipantFallback: "участник",
     dateRelativeToday: "Сегодня",
     dateRelativeTomorrow: "Завтра",
+    commentAdded: "добавил(а) комментарий.",
+    deletedTask: "удалил(а) задачу.",
+    changeGeneric: "внёс(ла) изменение.",
+    statusChanged: "изменил(а) статус на «{status}».",
+    createdTask: "создал(а) задачу.",
+    createdTaskWithTitle: "создал(а) задачу: {title}.",
+    assignedAdded: "добавил(а) {names}.",
+    assignedRemoved: "удалил(а) {names}.",
+    assignedBoth: "добавил(а) {added}; удалил(а) {removed}.",
   },
   language: {
     labelEnglish: "English",
@@ -231,5 +244,10 @@ export const ruNested: MessageTree = {
     requestRejected: "Регистрация отклонена.",
     requestedAt: "Запрошено",
     onlyAdmins: "Только для администраторов.",
+    userDeleted: "Пользователь удалён.",
+    confirmDeleteUserTitle: "Удалить учётную запись?",
+    confirmDeleteUserDescription:
+      "Будет удалён доступ для {username}. Это действие нельзя отменить.",
+    cannotDeleteSelf: "Нельзя удалить свою учётную запись.",
   },
 };

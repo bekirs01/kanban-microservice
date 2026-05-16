@@ -378,80 +378,10 @@ export class TaskService {
     const [history, totalHistory] = await queryBuilder.getManyAndCount();
 
     const mapped: ResponseTaskHistoryDto[] = history.map((h: TaskHistory) => {
-      const changes: AuditChanges = h.changes || ({ old: {}, new: {} } as AuditChanges);
-      const oldObj = changes.old || {};
-      const newObj = changes.new || {};
-
-      let content = '';
-
-      switch (h.action) {
-        case ActionType.ASSIGNED: {
-          const oldAssignees = Array.isArray(oldObj.assignees)
-            ? oldObj.assignees
-            : oldObj.assignees
-              ? [oldObj.assignees]
-              : [];
-          const newAssignees = Array.isArray(newObj.assignees)
-            ? newObj.assignees
-            : newObj.assignees
-              ? [newObj.assignees]
-              : [];
-          const oldSet = new Set(oldAssignees);
-          const newSet = new Set(newAssignees);
-
-          const added = newAssignees.filter((a) => !oldSet.has(a));
-          const removed = oldAssignees.filter((a) => !newSet.has(a));
-          if (added.length && !removed.length) {
-            content = added.length === 1 ? `adicionou ${added[0]}` : `adicionou ${added.length}`;
-          } else if (removed.length && !added.length) {
-            content = removed.length === 1 ? `removeu ${removed[0]}` : `removeu ${removed.length}`;
-          } else if (added.length && removed.length) {
-            const parts: string[] = [];
-            parts.push(added.length === 1 ? `adicionou ${added[0]}` : `adicionou ${added.length}`);
-            parts.push(removed.length === 1 ? `removeu ${removed[0]}` : `removeu ${removed.length}`);
-            content = parts.join('; ');
-          } else {
-            content = 'alterou atribuições';
-          }
-
-          break;
-        }
-
-        case ActionType.STATUS_CHANGE: {
-          const STATUS_LABELS: Record<string, string> = {
-            TODO: 'A Fazer',
-            IN_PROGRESS: 'Em Progresso',
-            REVIEW: 'Em Revisão',
-            DONE: 'Concluído',
-          };
-
-          content = `mudou o status para ${STATUS_LABELS[newObj.status] ?? 'desconhecido'}`;
-          break;
-        }
-
-        case ActionType.UPDATE: {
-          content = 'atualizou a tarefa';
-          break;
-        }
-
-        case ActionType.CREATED: {
-          content = `criou a tarefa${newObj.title ? `: ${newObj.title}` : ''}`;
-          break;
-        }
-
-        case ActionType.COMMENT: {
-          content = 'adicionou um comentário';
-          break;
-        }
-
-        default:
-          content = 'alteração';
-      }
-
       return {
         authorId: h.changedBy,
         action: h.action,
-        content,
+        content: '',
         changedAt: h.changedAt.toISOString(),
         rawChanges: h.changes,
       } as ResponseTaskHistoryDto;

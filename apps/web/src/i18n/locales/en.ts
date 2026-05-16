@@ -40,6 +40,10 @@ export const enNested: MessageTree = {
     },
     greetingHello: "Hello, {username}",
     logoutToast: "Signed out successfully.",
+    deadlineRangeFilter: "Deadline range",
+    dateFilterFromAria: "Deadline from",
+    dateFilterToAria: "Deadline to",
+    clearDateFilter: "Clear filter",
   },
   task: {
     title: "Title",
@@ -202,6 +206,15 @@ export const enNested: MessageTree = {
     historyParticipantFallback: "participant",
     dateRelativeToday: "Today",
     dateRelativeTomorrow: "Tomorrow",
+    commentAdded: "added a comment.",
+    deletedTask: "deleted this task.",
+    changeGeneric: "made a change.",
+    statusChanged: "changed status to {status}.",
+    createdTask: "created this task.",
+    createdTaskWithTitle: "created this task: {title}.",
+    assignedAdded: "added {names}.",
+    assignedRemoved: "removed {names}.",
+    assignedBoth: "added {added}; removed {removed}.",
   },
   language: {
     labelEnglish: "English",
@@ -233,5 +246,10 @@ export const enNested: MessageTree = {
     requestRejected: "Signup rejected.",
     requestedAt: "Requested at",
     onlyAdmins: "Administrators only.",
+    userDeleted: "User deleted.",
+    confirmDeleteUserTitle: "Delete this account?",
+    confirmDeleteUserDescription:
+      "This will permanently remove login access for {username}. This cannot be undone.",
+    cannotDeleteSelf: "You cannot delete your own account.",
   },
 };

@@ -1,4 +1,4 @@
-import type { AdminCreateUserRpcPayload, AdminListUsersRpcPayload, AdminUpdateRoleRpcPayload } from '@challenge/types';
+import type { AdminCreateUserRpcPayload, AdminDeleteUserRpcPayload, AdminListUsersRpcPayload, AdminUpdateRoleRpcPayload } from '@challenge/types';
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { UserService } from './user.service';
@@ -20,5 +20,10 @@ export class AdminUserController {
   @MessagePattern('admin.users.patchRole')
   patchRole(@Payload() payload: AdminUpdateRoleRpcPayload) {
     return this.userService.adminPatchRole(payload);
+  }
+
+  @MessagePattern('admin.users.delete')
+  delete(@Payload() payload: AdminDeleteUserRpcPayload) {
+    return this.userService.adminDeleteUser(payload);
   }
 }

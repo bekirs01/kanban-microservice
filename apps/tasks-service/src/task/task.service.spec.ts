@@ -1,5 +1,5 @@
 import { TaskNotFoundRpcException, UnauthorizedRpcException } from '@challenge/exceptions';
-import { ActionType, TaskPriority, TaskStatus } from '@challenge/types';
+import { ActionType, TaskPriority, TaskStatus, UserRole } from '@challenge/types';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -251,13 +251,19 @@ describe('TaskService', () => {
       id: taskId,
       title: 'Tarefa teste',
       comments: [],
+      creatorId: 'user-123',
+      assignees: [] as string[],
     };
 
     it('deve retornar tarefa por id com comentários', async () => {
       mockTaskRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       mockQueryBuilder.getOne.mockResolvedValue(mockTask);
 
-      const result = await taskService.getById(taskId);
+      const result = await taskService.getById({
+        taskId,
+        userId: 'user-123',
+        requesterRole: UserRole.USER,
+      });
 
       expect(result).toEqual(mockTask);
       expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
@@ -273,7 +279,13 @@ describe('TaskService', () => {
       mockTaskRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
       mockQueryBuilder.getOne.mockResolvedValue(null);
 
-      await expect(taskService.getById(taskId)).rejects.toThrow(
+      await expect(
+        taskService.getById({
+          taskId,
+          userId: 'user-123',
+          requesterRole: UserRole.USER,
+        }),
+      ).rejects.toThrow(
         TaskNotFoundRpcException,
       );
     });
@@ -476,8 +488,9 @@ describe('TaskService', () => {
       const result = await taskService.getTaskHistory(historyData);
 
       expect(result.items).toHaveLength(1);
-      expect(result.items[0]).toHaveProperty('action', ActionType.CREATED);
-      expect(result.items[0]).toHaveProperty('content');
+      const firstItem = result.items[0]!;
+      expect(firstItem).toHaveProperty('action', ActionType.CREATED);
+      expect(firstItem.content).toBe('');
       expect(result.data.totalItems).toBe(1);
     });
 

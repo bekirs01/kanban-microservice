@@ -6,6 +6,7 @@ import {
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -68,6 +69,18 @@ export class AdminController {
       requesterUserId: req.user.id,
       targetUserId: id,
       role: body.role,
+    });
+  }
+
+  @Delete("users/:id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: "Delete user account (ADMIN only)" })
+  @ApiParam({ name: "id", description: "User id (UUID)" })
+  @ApiResponse({ status: 204 })
+  deleteUser(@Req() req: any, @Param("id", ParseUUIDPipe) id: string) {
+    return this.authClient.send("admin.users.delete", {
+      requesterUserId: req.user.id,
+      targetUserId: id,
     });
   }
 
