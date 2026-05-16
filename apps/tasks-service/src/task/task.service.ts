@@ -326,7 +326,10 @@ export class TaskService {
       action: ActionType.COMMENT,
       changes: {
         old: {},
-        new: { content: data.content },
+        new: {
+          content: createdComment.content,
+          ...(createdComment.imageUrl ? { imageUrl: createdComment.imageUrl } : {}),
+        },
       },
       changedBy: data.authorId,
     });
@@ -349,7 +352,8 @@ export class TaskService {
       task: this.buildTaskNotifyShape(task),
       comment: {
         authorId: data.authorId,
-        content: data.content,
+        content: createdComment.content,
+        ...(createdComment.imageUrl ? { imageUrl: createdComment.imageUrl } : {}),
       },
       action: ActionType.COMMENT,
     };

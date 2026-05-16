@@ -10,7 +10,9 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { canManageAssignments } from "./lib/rbac";
 import { AdminPage } from "./pages/AdminPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { KanbanPage } from "./pages/KanbanPage";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -73,6 +75,20 @@ const kanbanRoute = createRoute({
   },
 });
 
+const analyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analytics",
+  component: AnalyticsPage,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    if (!canManageAssignments(context.auth.user?.role)) {
+      throw redirect({ to: "/kanban" });
+    }
+  },
+});
+
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
@@ -105,6 +121,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   registerRoute,
   kanbanRoute,
+  analyticsRoute,
   adminRoute,
 ]);
 

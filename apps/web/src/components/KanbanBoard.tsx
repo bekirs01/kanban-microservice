@@ -55,6 +55,7 @@ interface KanbanBoardProps {
   onTaskClick: (task: ResponseTaskDto) => void;
   viewerId?: string;
   viewerRole?: BoardViewerRole;
+  className?: string;
 }
 
 export function KanbanBoard({
@@ -63,6 +64,7 @@ export function KanbanBoard({
   onTaskClick,
   viewerId,
   viewerRole,
+  className,
 }: KanbanBoardProps) {
   const { t } = useTranslation();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -122,7 +124,12 @@ export function KanbanBoard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 h-full items-start">
+      <div
+        className={cn(
+          "grid h-full min-h-0 grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-4",
+          className,
+        )}
+      >
         {STATUSES.map((status) => (
           <KanbanColumn
             key={status}
@@ -164,8 +171,8 @@ function KanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <div className="flex flex-col h-full gap-4">
-      <div className="flex items-center justify-between px-1">
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div className="flex shrink-0 items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-sm tracking-tight text-foreground/80 uppercase">
             {title}
@@ -182,11 +189,11 @@ function KanbanColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 bg-muted/30 rounded-xl p-2 border border-transparent transition-colors min-h-[150px]",
+          "flex min-h-0 flex-1 flex-col rounded-xl border border-transparent bg-muted/30 p-2 transition-colors min-h-[120px]",
           isOver && "bg-muted/60 border-primary/10 ring-2 ring-primary/5",
         )}
       >
-        <div className="flex flex-col gap-3 max-h-[min(34rem,calc(100vh-17rem))] overflow-y-auto overscroll-y-contain pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1">
           {tasks.length === 0 ? (
             <p className="text-xs text-muted-foreground px-2 py-6 text-center">
               {t("board.emptyColumn")}
@@ -281,7 +288,7 @@ function TaskCard({
   return (
     <Card
       className={cn(
-        "hover:shadow-md transition-all duration-200 border-border/50 group bg-card",
+        "min-w-0 max-w-full hover:shadow-md transition-all duration-200 border-border/50 group bg-card",
         overdue && "border-l-4 border-l-destructive",
         isDraggable &&
           !isOverlay &&
@@ -293,9 +300,9 @@ function TaskCard({
           "rotate-2 shadow-xl cursor-grabbing ring-1 ring-primary/20 scale-105 z-50",
       )}
     >
-      <CardHeader className="pb-3 space-y-2.5">
-        <div className="flex justify-between items-start gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+      <CardHeader className="min-w-0 space-y-2.5 pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <Badge
               variant="outline"
               className={cn(
@@ -316,13 +323,13 @@ function TaskCard({
           </div>
         </div>
 
-        <h4 className="text-sm font-semibold leading-snug text-foreground/90 group-hover:text-primary transition-colors">
+        <h4 className="break-words text-sm font-semibold leading-snug text-foreground/90 transition-colors [overflow-wrap:anywhere] group-hover:text-primary">
           {task.title}
         </h4>
       </CardHeader>
 
-      <CardContent className="p-4 pt-0">
-        <p className="text-xs text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+      <CardContent className="min-w-0 p-4 pt-0">
+        <p className="mb-4 line-clamp-2 break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
           {task.description || t("task.noDescriptionFallback")}
         </p>
 
@@ -394,7 +401,7 @@ function AssigneesStack({ ids }: { ids: string[] }) {
 
 function KanbanSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
       {[1, 2, 3, 4].map((slot) => (
         <div key={slot} className="space-y-4">
           <Skeleton className="h-8 w-1/2" />

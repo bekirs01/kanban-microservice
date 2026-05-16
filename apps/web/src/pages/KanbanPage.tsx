@@ -1,16 +1,11 @@
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { DailyPlanPanel } from "@/components/dashboard/DailyPlanPanel";
 import { DashboardActivityPanel } from "@/components/dashboard/DashboardActivityPanel";
-import { DashboardBottomBar } from "@/components/dashboard/DashboardBottomBar";
-import { DashboardFilterChips } from "@/components/dashboard/DashboardFilterChips";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import type { DashboardNavId } from "@/components/dashboard/DashboardSidebar";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardParticipantsPanel } from "@/components/dashboard/DashboardParticipantsPanel";
-import { DashboardStats } from "@/components/dashboard/DashboardStats";
 import { DashboardToolbar } from "@/components/dashboard/DashboardToolbar";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
-import { WeekPlanner } from "@/components/dashboard/WeekPlanner";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
@@ -21,49 +16,36 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTranslation } from "@/i18n/useTranslation";
 import {
   applyClientTaskFilters,
-  computeStats,
-  getPlannerDays,
-  plannerRangeLabel,
   sortBoardTasks,
   uniqueUserIdsFromTasks,
-  type DashboardViewGranularity,
   type QuickTaskFilter,
   type TaskSortMode,
 } from "@/lib/dashboardDerived";
-import { isAdminRole, sharedBoardQueryFlag } from "@/lib/rbac";
-import { listAdminUsers } from "@/services/admin.service";
 import {
-  addMonths,
-  addWeeks,
-  format,
-  startOfDay,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
+  canManageAssignments,
+  isAdminRole,
+  seesOnlyAssignedTasks,
+  sharedBoardQueryFlag,
+} from "@/lib/rbac";
+import { listAdminUsers } from "@/services/admin.service";
+import { startOfDay, startOfMonth } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
+import { useRouterState } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { ResponseTaskDto, TaskPriority, TaskStatus } from "@challenge/types";
 
 export function KanbanPage() {
-  const { t, dateFnsLocale } = useTranslation();
+  const { t } = useTranslation();
   const { isConnected } = useWebSocket();
   const { user, logout } = useAuth();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [layoutMode, setLayoutMode] = useState<"kanban" | "calendar">(
-    "kanban",
-  );
-  const [activeNav, setActiveNav] = useState<DashboardNavId>("board");
-  const [quickFilter, setQuickFilter] = useState<QuickTaskFilter>("all");
+  const [deadlinePreset, setDeadlinePreset] =
+    useState<QuickTaskFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [plannerGranularity, setPlannerGranularity] =
-    useState<DashboardViewGranularity>("week");
-  const [plannerAnchor, setPlannerAnchor] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 }),
-  );
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [visibleMonth, setVisibleMonth] = useState(() =>
     startOfMonth(new Date()),
@@ -77,19 +59,42 @@ export function KanbanPage() {
   const [deadlineTo, setDeadlineTo] = useState("");
   const [sortMode, setSortMode] = useState<TaskSortMode>("deadline");
 
-  const {
-    data: tasksData,
-    isLoading,
-    isFetching,
-    dataUpdatedAt,
-    refetch,
-  } = useTasks({
+  const hash = useRouterState({
+    select: (s) => s.location.hash,
+  });
+
+  useEffect(() => {
+    const norm = (hash ?? "").replace(/^#/, "");
+    const scrollTo = (id: string) => {
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    };
+    if (norm === "dashboard-participants") {
+      scrollTo("dashboard-participants");
+    } else if (norm === "dashboard-mini-calendar") {
+      scrollTo("dashboard-mini-calendar");
+    }
+  }, [hash]);
+
+  const { data: tasksData, isLoading } = useTasks({
     page: 1,
     limit: 100,
     sharedBoard: sharedBoardQueryFlag(user?.role),
   });
 
-  const tasks = tasksData?.items ?? [];
+  const fetchedTasks = tasksData?.items ?? [];
+
+  const scopeTasks = useMemo(() => {
+    if (!user?.id) return fetchedTasks;
+    if (!seesOnlyAssignedTasks(user.role)) return fetchedTasks;
+    return fetchedTasks.filter((x) =>
+      (x.assignees ?? []).includes(user.id),
+    );
+  }, [fetchedTasks, user?.id, user?.role]);
 
   const { data: adminDirectory } = useQuery({
     queryKey: ["adminUsers"],
@@ -98,7 +103,10 @@ export function KanbanPage() {
     staleTime: 60_000,
   });
 
-  const teamIds = useMemo(() => uniqueUserIdsFromTasks(tasks), [tasks]);
+  const teamIds = useMemo(
+    () => uniqueUserIdsFromTasks(scopeTasks),
+    [scopeTasks],
+  );
   const { data: teamUsers = [] } = useUsersByIds(
     teamIds.length ? teamIds : undefined,
   );
@@ -131,24 +139,16 @@ export function KanbanPage() {
     [userById],
   );
 
-  const applySelectedDay = useCallback(
-    (d: Date) => {
-      const sd = startOfDay(d);
-      setSelectedDay(sd);
-      setVisibleMonth(startOfMonth(sd));
-      setPlannerAnchor(
-        plannerGranularity === "week"
-          ? startOfWeek(sd, { weekStartsOn: 1 })
-          : startOfMonth(sd),
-      );
-    },
-    [plannerGranularity],
-  );
+  const applySelectedDay = useCallback((d: Date) => {
+    const sd = startOfDay(d);
+    setSelectedDay(sd);
+    setVisibleMonth(startOfMonth(sd));
+  }, []);
 
   const clientFilters = useMemo(
     () => ({
       viewerId: user?.id,
-      quickFilter,
+      quickFilter: deadlinePreset,
       searchQuery,
       statuses: selectedStatuses.length ? selectedStatuses : null,
       priorities: selectedPriorities.length ? selectedPriorities : null,
@@ -159,7 +159,7 @@ export function KanbanPage() {
     }),
     [
       user?.id,
-      quickFilter,
+      deadlinePreset,
       searchQuery,
       selectedStatuses,
       selectedPriorities,
@@ -171,8 +171,8 @@ export function KanbanPage() {
   );
 
   const filteredTasks = useMemo(
-    () => applyClientTaskFilters(tasks, clientFilters),
-    [tasks, clientFilters],
+    () => applyClientTaskFilters(scopeTasks, clientFilters),
+    [scopeTasks, clientFilters],
   );
 
   const boardTasks = useMemo(
@@ -180,14 +180,9 @@ export function KanbanPage() {
     [filteredTasks, sortMode],
   );
 
-  const stats = useMemo(
-    () => computeStats(filteredTasks, user?.id),
-    [filteredTasks, user?.id],
-  );
-
   const filtersDirty = useMemo(
     () =>
-      quickFilter !== "all" ||
+      deadlinePreset !== "all" ||
       searchQuery.trim().length > 0 ||
       selectedStatuses.length > 0 ||
       selectedPriorities.length > 0 ||
@@ -196,7 +191,7 @@ export function KanbanPage() {
       deadlineTo.length > 0 ||
       selectedDay != null,
     [
-      quickFilter,
+      deadlinePreset,
       searchQuery,
       selectedStatuses.length,
       selectedPriorities.length,
@@ -207,88 +202,13 @@ export function KanbanPage() {
     ],
   );
 
-  const plannerDays = useMemo(
-    () => getPlannerDays(plannerAnchor, plannerGranularity),
-    [plannerAnchor, plannerGranularity],
-  );
-
-  const rangeLabel = useMemo(() => {
-    const { start, end } = plannerRangeLabel(
-      plannerAnchor,
-      plannerGranularity,
-    );
-    return `${format(start, "d MMM", { locale: dateFnsLocale })} – ${format(end, "d MMM yyyy", { locale: dateFnsLocale })}`;
-  }, [plannerAnchor, plannerGranularity, dateFnsLocale]);
-
   const handleLogout = async () => {
     await logout();
     toast.success(t("board.logoutToast"));
   };
 
-  const scrollToId = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
-  const handleQuickFilter = useCallback((v: QuickTaskFilter) => {
-    setQuickFilter(v);
-    setActiveNav((prev) => {
-      if (v === "my") return "myTasks";
-      if (prev === "myTasks") return "board";
-      return prev;
-    });
-  }, []);
-
-  const handleNav = (id: DashboardNavId) => {
-    setActiveNav(id);
-    if (id === "myTasks") setQuickFilter("my");
-    if (id === "board") setQuickFilter("all");
-    if (id === "participants") {
-      scrollToId("dashboard-participants");
-      return;
-    }
-    if (id === "board") {
-      setLayoutMode("kanban");
-      scrollToId("dashboard-board");
-    } else if (id === "calendar") {
-      setLayoutMode("calendar");
-      scrollToId("dashboard-week-planner");
-    }
-  };
-
-  const handlePlannerGranularity = (g: DashboardViewGranularity) => {
-    setPlannerGranularity(g);
-    setPlannerAnchor((a) =>
-      g === "month" ? startOfMonth(a) : startOfWeek(a, { weekStartsOn: 1 }),
-    );
-  };
-
-  const handlePrevPlanner = () => {
-    setSelectedDay(null);
-    setPlannerAnchor((a) =>
-      plannerGranularity === "week"
-        ? addWeeks(a, -1)
-        : addMonths(startOfMonth(a), -1),
-    );
-  };
-
-  const handleNextPlanner = () => {
-    setSelectedDay(null);
-    setPlannerAnchor((a) =>
-      plannerGranularity === "week"
-        ? addWeeks(a, 1)
-        : addMonths(startOfMonth(a), 1),
-    );
-  };
-
-  const handleTodayPlanner = () => {
-    applySelectedDay(new Date());
-  };
-
   const handleClearFilters = () => {
-    setQuickFilter("all");
+    setDeadlinePreset("all");
     setSearchQuery("");
     setSelectedStatuses([]);
     setSelectedPriorities([]);
@@ -296,7 +216,13 @@ export function KanbanPage() {
     setDeadlineFrom("");
     setDeadlineTo("");
     setSelectedDay(null);
-    setActiveNav("board");
+  };
+
+  const scrollToMiniCalendar = () => {
+    document.getElementById("dashboard-mini-calendar")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   const handleTaskClick = (task: ResponseTaskDto) => {
@@ -308,37 +234,30 @@ export function KanbanPage() {
   const showAdminParticipants =
     isAdminRole(user?.role) && (adminDirectory?.length ?? 0) > 0;
 
+  const managerRole = canManageAssignments(user?.role);
+
   return (
     <div className="flex min-h-screen flex-col bg-muted/25">
       <div className="flex min-h-0 flex-1">
         <DashboardSidebar
-          activeNav={activeNav}
-          onNav={handleNav}
           teamUsers={teamUsers}
           showInvite={isAdminRole(user?.role)}
           showParticipantsNav={isAdminRole(user?.role)}
+          showAnalyticsNav={managerRole}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <DashboardHeader
             isConnected={isConnected}
             user={user}
-            layoutMode={layoutMode}
-            onLayoutMode={(m) => {
-              setLayoutMode(m);
-              if (m === "kanban") scrollToId("dashboard-board");
-              else scrollToId("dashboard-week-planner");
-            }}
+            layoutMode="kanban"
+            onLayoutMode={() => {}}
             onLogout={handleLogout}
+            showLayoutToggle={false}
           />
           <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1700px] space-y-4 p-4 pb-24 lg:space-y-5 lg:p-6">
-              <DashboardStats stats={stats} />
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <DashboardFilterChips
-                  value={quickFilter}
-                  onChange={handleQuickFilter}
-                />
-                {filtersDirty ? (
+            <div className="mx-auto max-w-[1700px] space-y-4 p-4 pb-10 lg:space-y-5 lg:p-6">
+              {filtersDirty ? (
+                <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
@@ -349,18 +268,14 @@ export function KanbanPage() {
                     <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                     {t("dashboard.clearFilters")}
                   </Button>
-                ) : null}
-              </div>
-              {filtersDirty ? (
-                <p className="text-xs text-muted-foreground">
-                  {t("dashboard.filtersActiveHint")}
-                </p>
+                  <p className="max-w-xl text-right text-xs text-muted-foreground">
+                    {t("dashboard.filtersActiveHint")}
+                  </p>
+                </div>
               ) : null}
               <DashboardToolbar
                 showNewTask={showNewTask}
                 onNewTask={() => setCreateDialogOpen(true)}
-                plannerGranularity={plannerGranularity}
-                onPlannerGranularity={handlePlannerGranularity}
                 sortMode={sortMode}
                 onSortMode={setSortMode}
                 deadlineFrom={deadlineFrom}
@@ -389,83 +304,57 @@ export function KanbanPage() {
                 onClearFilters={handleClearFilters}
                 searchQuery={searchQuery}
                 onSearchQuery={setSearchQuery}
+                deadlinePreset={deadlinePreset}
+                onDeadlinePreset={setDeadlinePreset}
+                showAssigneeFilter={managerRole}
+                showAssignedToMePreset={managerRole}
               />
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
-                <div className="min-w-0 space-y-4">
-                  <WeekPlanner
-                    days={plannerDays}
-                    selectedDay={selectedDay}
-                    onSelectDay={(d) => {
-                      if (!d) {
-                        setSelectedDay(null);
-                        return;
-                      }
-                      applySelectedDay(d);
-                    }}
-                    tasks={filteredTasks}
-                    granularity={plannerGranularity}
-                    onPrev={handlePrevPlanner}
-                    onNext={handleNextPlanner}
-                    onToday={handleTodayPlanner}
-                    rangeLabel={rangeLabel}
-                  />
-                  {layoutMode === "kanban" ? (
-                    <div id="dashboard-board" className="min-h-[400px]">
-                      <KanbanBoard
-                        tasks={boardTasks}
-                        isLoading={isLoading}
-                        onTaskClick={handleTaskClick}
-                        viewerId={user?.id}
-                        viewerRole={user?.role}
-                      />
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border bg-card px-6 py-10 text-center text-sm text-muted-foreground shadow-md">
-                      {t("dashboard.calendarLayoutHint")}
-                    </div>
-                  )}
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-stretch xl:min-h-[calc(100vh-11rem)]">
+                <div className="flex min-h-0 min-w-0 flex-col gap-4">
+                  <div
+                    id="dashboard-board"
+                    className="flex min-h-0 flex-1 flex-col xl:min-h-[min(52vh,560px)]"
+                  >
+                    <KanbanBoard
+                      className="min-h-0 flex-1"
+                      tasks={boardTasks}
+                      isLoading={isLoading}
+                      onTaskClick={handleTaskClick}
+                      viewerId={user?.id}
+                      viewerRole={user?.role}
+                    />
+                  </div>
                 </div>
 
-                <div className="flex min-h-0 flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
-                  <MiniCalendar
-                    visibleMonth={visibleMonth}
-                    onMonthChange={(m) => setVisibleMonth(startOfMonth(m))}
-                    selectedDay={selectedDay}
-                    onSelectDay={(d) => applySelectedDay(d)}
-                    tasks={filteredTasks}
-                  />
-                  <DailyPlanPanel
-                    selectedDay={selectedDay}
-                    allTasks={filteredTasks}
-                    onTaskClick={handleTaskClick}
-                    onOpenCalendar={() => {
-                      setLayoutMode("calendar");
-                      setActiveNav("calendar");
-                      scrollToId("dashboard-week-planner");
-                    }}
-                    resolveInitials={resolveInitials}
-                  />
-                  {showAdminParticipants && adminDirectory ? (
-                    <DashboardParticipantsPanel
-                      users={adminDirectory}
-                      tasks={tasks}
+                <div className="flex min-h-0 flex-col gap-4 xl:self-stretch">
+                  <div className="flex flex-col gap-4 xl:sticky xl:top-4">
+                    <MiniCalendar
+                      visibleMonth={visibleMonth}
+                      onMonthChange={(m) => setVisibleMonth(startOfMonth(m))}
+                      selectedDay={selectedDay}
+                      onSelectDay={(d) => applySelectedDay(d)}
+                      tasks={filteredTasks}
                     />
-                  ) : null}
-                  <DashboardActivityPanel />
+                    <DailyPlanPanel
+                      selectedDay={selectedDay}
+                      allTasks={filteredTasks}
+                      onTaskClick={handleTaskClick}
+                      onOpenCalendar={scrollToMiniCalendar}
+                      resolveInitials={resolveInitials}
+                    />
+                    {showAdminParticipants && adminDirectory ? (
+                      <DashboardParticipantsPanel
+                        users={adminDirectory}
+                        tasks={fetchedTasks}
+                      />
+                    ) : null}
+                    <DashboardActivityPanel />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <DashboardBottomBar
-            tasks={filteredTasks}
-            viewerId={user?.id}
-            dataUpdatedAt={dataUpdatedAt}
-            onRefresh={() => void refetch()}
-            isRefreshing={isFetching}
-            quickFilter={quickFilter}
-            onQuickFilter={handleQuickFilter}
-          />
         </div>
       </div>
 

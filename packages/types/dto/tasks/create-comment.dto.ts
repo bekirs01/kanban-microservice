@@ -1,21 +1,33 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { UserRole } from '../../enums';
 
 export class CreateCommentDto {
-  @ApiProperty({
-    example: 'A migration falhou porque faltou rodar o build.',
-    description: 'Conteúdo do comentário da tarefa'
+  @ApiPropertyOptional({
+    example: 'Build failed due to migration order.',
+    description:
+      'Comment text (unless an image is attached). Minimum length is enforced server-side only when no image is present.',
+    maxLength: 1000,
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @MinLength(3, { message: 'O comentário precisa ter pelo menos 3 caracteres.' })
-  @MaxLength(1000, { message: 'O comentário não pode ter mais de 1000 caracteres.' })
-  content: string;
+  @MaxLength(1000, { message: 'The comment cannot exceed 1000 characters.' })
+  content?: string;
+
+  @ApiPropertyOptional({
+    example: '/api/uploads/comment-images/9c2c4c4c-cc00-4123-bcde-001122334455.jpg',
+    description: 'Public path of a stored attachment (set internally after upload)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  imageUrl?: string | null;
 }
 
-export interface CreateCommentPayload extends CreateCommentDto {
+export interface CreateCommentPayload {
   taskId: string;
   authorId: string;
+  content: string;
+  imageUrl?: string | null;
   requesterRole?: UserRole;
 }

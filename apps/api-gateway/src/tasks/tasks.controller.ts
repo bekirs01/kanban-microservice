@@ -1,15 +1,42 @@
-import { AssignTaskDto, AssignTaskPayload, CreateCommentDto, CreateCommentPayload, CreateTaskDto, CreateTaskPayload, DeleteTaskPayload, PaginationQueryDto, PaginationQueryPayload, TaskAccessRpcPayload, TaskHistoryPayload, UpdateTaskDto, UpdateTaskPayload } from '@challenge/types';
-import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { AssignTaskDto, AssignTaskPayload, CreateCommentPayload, CreateTaskDto, CreateTaskPayload, DeleteTaskPayload, PaginationQueryDto, PaginationQueryPayload, TaskAccessRpcPayload, TaskHistoryPayload, UpdateTaskDto, UpdateTaskPayload } from '@challenge/types';
+import { BadRequestException, Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ClientProxy } from '@nestjs/microservices';
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiResponse,
   ApiTags
 } from '@nestjs/swagger';
 import { isBoardElevated, normalizeRequesterRole } from '../common/rbac';
+import { commentImageUploadOptions, type CommentUploadLike } from '../upload/comment-image-upload';
+import { storedCommentImageRelativeUrl } from '../upload/upload.paths';
+
+function normalizeMultipartContentField(raw: unknown): string {
+  if (typeof raw === "string") {
+    return raw;
+  }
+  if (Array.isArray(raw)) {
+    const first = raw[0];
+    if (typeof first === "string") {
+      return first;
+    }
+    if (Buffer.isBuffer(first)) {
+      return first.toString("utf8");
+    }
+  }
+  if (Buffer.isBuffer(raw)) {
+    return raw.toString("utf8");
+  }
+  if (raw != null && typeof raw !== "object") {
+    return String(raw);
+  }
+  return "";
+}
 
 @ApiTags("tasks")
 @ApiBearerAuth()
@@ -105,17 +132,55 @@ export class TasksController {
 
   @UseGuards(AuthGuard("jwt"))
   @Post("/:id/comment")
+  @ApiConsumes("multipart/form-data")
+  @UseInterceptors(FileInterceptor("image", commentImageUploadOptions))
   @ApiOperation({ summary: 'Adicionar um comentário na tarefa' })
   @ApiParam({ name: 'id', description: 'ID da tarefa (UUID)' })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        content: {
+          type: "string",
+          description: "Comment caption (minimum 3 characters when no image is attached)",
+          maxLength: 1000,
+        },
+        image: {
+          type: "string",
+          format: "binary",
+          description: "JPEG, PNG, GIF, or WEBP (max 5MB)",
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Comentário adicionado.' })
-  comment(@Body() dto: CreateCommentDto, @Param("id") taskId: string, @Req() req: any) {
+  @ApiResponse({ status: 400, description: 'Dados inválidos ou arquivo rejeitado.' })
+  comment(
+    @Param("id") taskId: string,
+    @UploadedFile() file: CommentUploadLike | undefined,
+    @Req() req: any,
+  ) {
     const role = normalizeRequesterRole(req.user?.role);
+    const trimmed =
+      normalizeMultipartContentField(req.body?.content)
+        .trim()
+        .slice(0, 1000);
+
+    if (!file && trimmed.length < 3) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: "COMMENT_TOO_SHORT",
+      });
+    }
+
     const payload: CreateCommentPayload = {
       taskId,
       authorId: req.user.id,
-      content: dto.content,
+      content: trimmed,
+      ...(file?.filename ? { imageUrl: storedCommentImageRelativeUrl(file.filename) } : {}),
       requesterRole: role,
     };
+
     return this.tasksClient.send("task.comment", payload);
   }
 

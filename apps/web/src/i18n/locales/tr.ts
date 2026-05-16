@@ -161,6 +161,9 @@ export const trNested: MessageTree = {
     titleMin: "Başlık en az 3 karakter olmalıdır.",
     descriptionMin: "Açıklama en az 10 karakter olmalıdır.",
     deadlineRequired: "Bitiş tarihi seçin",
+    commentTooLong: "Yorum 1000 karakteri geçemez.",
+    commentMinForTextOnly:
+      "Göndermeden önce en az 3 karakter yazın veya görsel ekleyin.",
     commentRequired: "Yorum boş olamaz",
   },
   createTask: {
@@ -185,6 +188,13 @@ export const trNested: MessageTree = {
     placeholder: "Bir yorum yazın…",
     submitIdle: "Gönder",
     submitBusy: "Gönderiliyor…",
+    attach: "Görsel ekle",
+    attachAria: "Cihazdan görsel seç",
+    clearAttachmentAria: "Eklenen görseli kaldır",
+    dragHint: "Görseli buraya sürükleyin",
+    previewAlt: "Ön izleme",
+    invalidImageType: "JPEG, PNG, GIF veya WEBP kullanın.",
+    imageTooLarge: "Görsel boyutu en fazla 5 MB olabilir.",
   },
   participants: {
     title: "Katılımcılar",
@@ -278,7 +288,7 @@ export const trNested: MessageTree = {
     previousWeek: "Önceki dönem",
     nextWeek: "Sonraki dönem",
     assignedToMe: "Bana atanan",
-    quickActions: "Görünüm",
+    sortLabel: "Sıralama",
     upcomingTasks: "Yaklaşan (7 gün)",
     allDays: "Tüm günler",
     tasksDueCount: "{count} bitiş",
@@ -286,15 +296,16 @@ export const trNested: MessageTree = {
     viewKanban: "Kanban",
     clearFilters: "Filtreleri temizle",
     anyAssignee: "Herhangi biri",
-    sortDeadline: "Sıra: bitiş",
-    sortPriority: "Sıra: öncelik",
-    sortCreated: "Sıra: yeni",
+    sortDeadline: "Bitiş tarihi (önce en yakın)",
+    sortPriority: "Öncelik (önce en yüksek)",
+    sortCreated: "Oluşturulma (önce en yeni)",
     noUpcoming: "Bu aralıkta yaklaşan bitiş yok.",
     miniCalPrevMonth: "Önceki ay",
     miniCalNextMonth: "Sonraki ay",
     calendarLayoutHint:
       "Takvim görünümünde hafta çubuğu ve günlük plan öne çıkar. Sütunlar için Kanban'a geçin.",
     quickFilters: "Odak",
+    deadlinePresets: "Bitiş odağı",
     filterChipAll: "Tümü",
     filterChipOverdue: "Gecikmiş",
     filterChipToday: "Bugün",
@@ -313,5 +324,15 @@ export const trNested: MessageTree = {
     noAssigneeShort: "—",
     filtersActiveHint:
       "Sonuçlar filtrelendi. Rolünüz kapsamındaki tüm görevleri görmek için filtreleri sıfırlayın.",
+  },
+  analytics: {
+    pageTitle: "Analitik",
+    pageSubtitle:
+      "Paylaşılan pano için iş yükü özeti ve trendler (yöneticiler).",
+    navLabel: "Analitik",
+    chartStatusTitle: "Duruma göre görevler",
+    chartPriorityTitle: "Önceliğe göre görevler",
+    chartCreatedTitle: "Haftalık oluşturulan görevler",
+    chartEmpty: "Bu grafik için henüz yeterli veri yok.",
   },
 };

@@ -27,3 +27,7 @@ export function isAdminRole(role: Role | undefined): boolean {
 export function sharedBoardQueryFlag(role: Role | undefined): boolean {
   return canManageAssignments(role);
 }
+
+export function seesOnlyAssignedTasks(role: Role | undefined): boolean {
+  return (role ?? "USER") === "USER";
+}

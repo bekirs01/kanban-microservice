@@ -5,3 +5,6 @@ CREATE SCHEMA IF NOT EXISTS notification_service;
 GRANT ALL PRIVILEGES ON SCHEMA auth_service TO postgres;
 GRANT ALL PRIVILEGES ON SCHEMA task_service TO postgres;
 GRANT ALL PRIVILEGES ON SCHEMA notification_service TO postgres;
+
+ALTER TABLE IF EXISTS task_service.comments
+  ADD COLUMN IF NOT EXISTS "imageUrl" character varying(2048);

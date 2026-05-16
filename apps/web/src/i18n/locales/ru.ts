@@ -161,6 +161,9 @@ export const ruNested: MessageTree = {
     titleMin: "Название должно содержать не менее 3 символов.",
     descriptionMin: "Описание должно содержать не менее 10 символов.",
     deadlineRequired: "Выберите дедлайн",
+    commentTooLong: "Комментарий не может быть длиннее 1000 символов.",
+    commentMinForTextOnly:
+      "Введите не менее 3 символов или прикрепите изображение перед отправкой.",
     commentRequired: "Комментарий не может быть пустым",
   },
   createTask: {
@@ -184,6 +187,13 @@ export const ruNested: MessageTree = {
     placeholder: "Напишите комментарий…",
     submitIdle: "Отправить",
     submitBusy: "Отправка…",
+    attach: "Прикрепить",
+    attachAria: "Прикрепить изображение с устройства",
+    clearAttachmentAria: "Удалить вложение",
+    dragHint: "Перетащите изображение сюда",
+    previewAlt: "Предпросмотр изображения",
+    invalidImageType: "Поддерживаются JPEG, PNG, GIF или WEBP.",
+    imageTooLarge: "Максимальный размер файла — 5 МБ.",
   },
   participants: {
     title: "Участники",
@@ -277,7 +287,7 @@ export const ruNested: MessageTree = {
     previousWeek: "Предыдущий период",
     nextWeek: "Следующий период",
     assignedToMe: "Назначено мне",
-    quickActions: "Вид",
+    sortLabel: "Сортировка",
     upcomingTasks: "Ближайшие (7 дней)",
     allDays: "Все дни",
     tasksDueCount: "{count} срок",
@@ -285,15 +295,16 @@ export const ruNested: MessageTree = {
     viewKanban: "Канбан",
     clearFilters: "Сбросить фильтры",
     anyAssignee: "Любой",
-    sortDeadline: "Сорт.: срок",
-    sortPriority: "Сорт.: приоритет",
-    sortCreated: "Сорт.: новые",
+    sortDeadline: "По сроку: сначала ближайшие дедлайны",
+    sortPriority: "По приоритету: сначала выше",
+    sortCreated: "По дате создания: сначала новые",
     noUpcoming: "Нет ближайших сроков в этом диапазоне.",
     miniCalPrevMonth: "Предыдущий месяц",
     miniCalNextMonth: "Следующий месяц",
     calendarLayoutHint:
       "В режиме календаря акцент на неделе и дневном плане. Переключитесь на Канбан для колонок.",
     quickFilters: "Фокус",
+    deadlinePresets: "Срок",
     filterChipAll: "Все",
     filterChipOverdue: "Просрочено",
     filterChipToday: "Сегодня",
@@ -312,5 +323,15 @@ export const ruNested: MessageTree = {
     noAssigneeShort: "—",
     filtersActiveHint:
       "Показаны отфильтрованные результаты. Сбросьте фильтры, чтобы увидеть все задачи в пределах вашей роли.",
+  },
+  analytics: {
+    pageTitle: "Аналитика",
+    pageSubtitle:
+      "Сводка загрузки и динамики по общей доске (для администраторов и менеджеров).",
+    navLabel: "Аналитика",
+    chartStatusTitle: "Задачи по статусам",
+    chartPriorityTitle: "Задачи по приоритету",
+    chartCreatedTitle: "Созданные задачи по неделям",
+    chartEmpty: "Пока недостаточно данных для диаграммы.",
   },
 };

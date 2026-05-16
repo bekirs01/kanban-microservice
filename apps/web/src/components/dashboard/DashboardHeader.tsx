@@ -23,6 +23,8 @@ interface DashboardHeaderProps {
   layoutMode: "kanban" | "calendar";
   onLayoutMode: (mode: "kanban" | "calendar") => void;
   onLogout: () => void;
+  titleKey?: string;
+  showLayoutToggle?: boolean;
 }
 
 const ROLE_KEYS: Record<UserRole, string> = {
@@ -37,6 +39,8 @@ export function DashboardHeader({
   layoutMode,
   onLayoutMode,
   onLogout,
+  titleKey = "board.title",
+  showLayoutToggle = true,
 }: DashboardHeaderProps) {
   const { t, locale, setLanguage } = useTranslation();
 
@@ -45,7 +49,7 @@ export function DashboardHeader({
       <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 lg:px-6">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
           <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-            {t("board.title")}
+            {t(titleKey)}
           </h1>
           <div
             className="flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground"
@@ -64,27 +68,29 @@ export function DashboardHeader({
             )}
           </div>
 
-          <div className="hidden md:flex items-center rounded-lg border bg-muted/40 p-0.5">
-            <Button
-              type="button"
-              size="sm"
-              variant={layoutMode === "kanban" ? "default" : "ghost"}
-              className="h-8 rounded-md px-3"
-              onClick={() => onLayoutMode("kanban")}
-            >
-              <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
-              {t("dashboard.viewKanban")}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={layoutMode === "calendar" ? "default" : "ghost"}
-              className="h-8 rounded-md px-3"
-              onClick={() => onLayoutMode("calendar")}
-            >
-              {t("dashboard.calendar")}
-            </Button>
-          </div>
+          {showLayoutToggle ? (
+            <div className="hidden md:flex items-center rounded-lg border bg-muted/40 p-0.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={layoutMode === "kanban" ? "default" : "ghost"}
+                className="h-8 rounded-md px-3"
+                onClick={() => onLayoutMode("kanban")}
+              >
+                <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
+                {t("dashboard.viewKanban")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={layoutMode === "calendar" ? "default" : "ghost"}
+                className="h-8 rounded-md px-3"
+                onClick={() => onLayoutMode("calendar")}
+              >
+                {t("dashboard.calendar")}
+              </Button>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">

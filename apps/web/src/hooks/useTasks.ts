@@ -1,7 +1,6 @@
-import { tasksService } from "@/services/tasks.service";
+import { tasksService, type TaskCommentSubmit } from "@/services/tasks.service";
 import type {
   AssignTaskDto,
-  CreateCommentDto,
   CreateTaskDto,
   PaginationQueryDto,
   UpdateTaskDto
@@ -113,18 +112,19 @@ export function useAddComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CreateCommentDto }) =>
+    mutationFn: ({ id, data }: { id: string; data: TaskCommentSubmit }) =>
       tasksService.addComment(id, data),
-    onMutate: async ({ id, data }: { id: string; data: CreateCommentDto }) => {
+    onMutate: async ({ id, data }: { id: string; data: TaskCommentSubmit }) => {
       await queryClient.cancelQueries({ queryKey: ["taskComments", id] });
 
       const previous = queryClient.getQueryData<any[]>(["taskComments", id]);
 
       const optimisticComment = {
         id: `temp-${Date.now()}`,
-        content: data.content,
-        authorId: (data as any).authorId ?? null,
+        content: String(data.content ?? ""),
+        authorId: (data as unknown as { authorId?: string }).authorId ?? null,
         createdAt: new Date().toISOString(),
+        imageUrl: null,
       };
 
       queryClient.setQueryData(["taskComments", id], (old: any[] | undefined) => [

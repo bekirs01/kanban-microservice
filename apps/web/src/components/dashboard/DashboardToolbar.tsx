@@ -14,10 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTranslation } from "@/i18n/useTranslation";
-import type {
-  DashboardViewGranularity,
-  TaskSortMode,
-} from "@/lib/dashboardDerived";
+import type { QuickTaskFilter, TaskSortMode } from "@/lib/dashboardDerived";
 import type { TaskPriority, TaskStatus } from "@challenge/types";
 import { Filter, Plus, RotateCcw, Search } from "lucide-react";
 
@@ -32,8 +29,6 @@ export interface AssigneeOption {
 interface DashboardToolbarProps {
   showNewTask: boolean;
   onNewTask: () => void;
-  plannerGranularity: DashboardViewGranularity;
-  onPlannerGranularity: (g: DashboardViewGranularity) => void;
   sortMode: TaskSortMode;
   onSortMode: (m: TaskSortMode) => void;
   deadlineFrom: string;
@@ -50,13 +45,15 @@ interface DashboardToolbarProps {
   onClearFilters: () => void;
   searchQuery: string;
   onSearchQuery: (v: string) => void;
+  deadlinePreset: QuickTaskFilter;
+  onDeadlinePreset: (v: QuickTaskFilter) => void;
+  showAssigneeFilter: boolean;
+  showAssignedToMePreset: boolean;
 }
 
 export function DashboardToolbar({
   showNewTask,
   onNewTask,
-  plannerGranularity,
-  onPlannerGranularity,
   sortMode,
   onSortMode,
   deadlineFrom,
@@ -73,6 +70,10 @@ export function DashboardToolbar({
   onClearFilters,
   searchQuery,
   onSearchQuery,
+  deadlinePreset,
+  onDeadlinePreset,
+  showAssigneeFilter,
+  showAssignedToMePreset,
 }: DashboardToolbarProps) {
   const { t } = useTranslation();
 
@@ -88,6 +89,16 @@ export function DashboardToolbar({
 
   const priorityLabel = (p: TaskPriority) =>
     t(`task.priority.${p.toLowerCase() as "low" | "medium" | "high" | "urgent"}`);
+
+  const deadlinePresets: { id: QuickTaskFilter; labelKey: string }[] = [
+    { id: "all", labelKey: "dashboard.filterChipAll" },
+    { id: "overdue", labelKey: "dashboard.filterChipOverdue" },
+    { id: "today", labelKey: "dashboard.filterChipToday" },
+    { id: "week", labelKey: "dashboard.filterChipWeek" },
+    ...(showAssignedToMePreset
+      ? [{ id: "my" as const, labelKey: "dashboard.filterChipMy" }]
+      : []),
+  ];
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-md lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
@@ -119,6 +130,27 @@ export function DashboardToolbar({
           </PopoverTrigger>
           <PopoverContent className="w-80 sm:w-96" align="start">
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                  {t("dashboard.deadlinePresets")}
+                </Label>
+                <div className="flex flex-wrap gap-2">
+                  {deadlinePresets.map((p) => (
+                    <Button
+                      key={p.id}
+                      type="button"
+                      size="sm"
+                      variant={
+                        deadlinePreset === p.id ? "default" : "outline"
+                      }
+                      className="h-8"
+                      onClick={() => onDeadlinePreset(p.id)}
+                    >
+                      {t(p.labelKey)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label className="text-xs font-semibold uppercase text-muted-foreground">
                   {t("task.status")}
@@ -161,29 +193,31 @@ export function DashboardToolbar({
                   ))}
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                  {t("task.assignee")}
-                </Label>
-                <Select
-                  value={assigneeId ?? "all"}
-                  onValueChange={(v) =>
-                    onAssigneeId(v === "all" ? null : v)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("participants.searchPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("dashboard.anyAssignee")}</SelectItem>
-                    {assigneeOptions.map((o) => (
-                      <SelectItem key={o.id} value={o.id}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {showAssigneeFilter ? (
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                    {t("task.assignee")}
+                  </Label>
+                  <Select
+                    value={assigneeId ?? "all"}
+                    onValueChange={(v) =>
+                      onAssigneeId(v === "all" ? null : v)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("participants.searchPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t("dashboard.anyAssignee")}</SelectItem>
+                      {assigneeOptions.map((o) => (
+                        <SelectItem key={o.id} value={o.id}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">{t("board.dateFilterFromAria")}</Label>
@@ -216,26 +250,15 @@ export function DashboardToolbar({
           </PopoverContent>
         </Popover>
 
-        <div className="flex items-center gap-2">
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            {t("dashboard.quickActions")}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="hidden shrink-0 text-xs font-medium text-muted-foreground sm:inline">
+            {t("dashboard.sortLabel")}
           </span>
-          <Select
-            value={plannerGranularity}
-            onValueChange={(v) =>
-              onPlannerGranularity(v as DashboardViewGranularity)
-            }
-          >
-            <SelectTrigger className="h-9 w-[120px] text-xs sm:text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">{t("dashboard.week")}</SelectItem>
-              <SelectItem value="month">{t("dashboard.month")}</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={sortMode} onValueChange={(v) => onSortMode(v as TaskSortMode)}>
-            <SelectTrigger className="h-9 w-[140px] text-xs sm:text-sm">
+            <SelectTrigger
+              className="h-9 min-w-[12rem] max-w-[min(100%,18rem)] text-xs sm:min-w-[14rem] sm:text-sm"
+              aria-label={t("dashboard.sortLabel")}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

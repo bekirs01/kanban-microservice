@@ -18,6 +18,7 @@ export interface TaskNotificationPayload {
   comment?: {
     content: string;
     authorId: string;
+    imageUrl?: string | null;
   };
   action?: ActionType;
 }

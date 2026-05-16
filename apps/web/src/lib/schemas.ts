@@ -33,7 +33,7 @@ export function buildUpdateTaskSchema(t: TranslateFn) {
 
 export function buildCommentSchema(t: TranslateFn) {
   return z.object({
-    content: z.string().min(1, t("validation.commentRequired")),
+    content: z.string().max(1000, t("validation.commentTooLong")),
   });
 }
 

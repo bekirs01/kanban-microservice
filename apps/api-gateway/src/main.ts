@@ -1,10 +1,15 @@
 import { Logger as NestLogger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { config } from 'dotenv';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { RpcExceptionFilter } from './common/filters/rpc-exception.filter';
+import {
+  UPLOAD_ROOT,
+  ensureUploadDirsSync,
+} from './upload/upload.paths';
 
 config();
 
@@ -12,7 +17,15 @@ async function bootstrap() {
   const logger = new NestLogger('Bootstrap');
   try {
 
-    const app = await NestFactory.create(AppModule, { bufferLogs: true });
+    ensureUploadDirsSync();
+
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+
+    app.useStaticAssets(UPLOAD_ROOT, {
+      prefix: '/api/uploads/',
+      index: false,
+      fallthrough: true,
+    });
 
     app.useLogger(app.get(Logger));
 

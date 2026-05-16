@@ -9,6 +9,8 @@ import type {
 } from "@challenge/types";
 import { api } from './api';
 
+export type TaskCommentSubmit = CreateCommentDto & { attachment?: File | null };
+
 export const tasksService = {
   async createTask(data: CreateTaskDto): Promise<ResponseTaskDto> {
     const response = await api.post<ResponseTaskDto>('/api/tasks', data);
@@ -44,8 +46,16 @@ export const tasksService = {
     return response.data;
   },
 
-  async addComment(id: string, data: CreateCommentDto): Promise<Comment> {
-    const response = await api.post<Comment>(`/api/tasks/${id}/comment`, data);
+  async addComment(
+    id: string,
+    data: TaskCommentSubmit,
+  ): Promise<Record<string, unknown>> {
+    const fd = new FormData();
+    fd.append('content', (data.content ?? '').trim());
+    if (data.attachment) {
+      fd.append('image', data.attachment);
+    }
+    const response = await api.post<Record<string, unknown>>(`/api/tasks/${id}/comment`, fd);
     return response.data;
   },
 

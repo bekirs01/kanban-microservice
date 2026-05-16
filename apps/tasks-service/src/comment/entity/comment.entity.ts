@@ -7,7 +7,10 @@ export class Comment {
   id!: string
 
   @Column({ nullable: false })
-  content!: string
+  content!: string;
+
+  @Column({ type: "varchar", length: 2048, nullable: true })
+  imageUrl!: string | null;
 
   @ManyToOne(() => Task, (task) => task.comments, { onDelete: "CASCADE" })
   @JoinColumn()

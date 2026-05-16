@@ -162,6 +162,9 @@ export const enNested: MessageTree = {
     titleMin: "Title must be at least 3 characters.",
     descriptionMin: "Description must be at least 10 characters.",
     deadlineRequired: "Select a deadline",
+    commentTooLong: "Comment cannot exceed 1000 characters.",
+    commentMinForTextOnly:
+      "Add at least 3 characters or attach an image before sending.",
     commentRequired: "Comment cannot be empty",
   },
   createTask: {
@@ -186,6 +189,13 @@ export const enNested: MessageTree = {
     placeholder: "Write a comment…",
     submitIdle: "Send",
     submitBusy: "Sending…",
+    attach: "Attach image",
+    attachAria: "Attach image from device",
+    clearAttachmentAria: "Remove attachment",
+    dragHint: "Drop an image here to attach",
+    previewAlt: "Comment attachment preview",
+    invalidImageType: "Use a JPEG, PNG, GIF, or WEBP image.",
+    imageTooLarge: "Maximum image size is 5 MB.",
   },
   participants: {
     title: "Participants",
@@ -279,7 +289,7 @@ export const enNested: MessageTree = {
     previousWeek: "Previous period",
     nextWeek: "Next period",
     assignedToMe: "Assigned to me",
-    quickActions: "View",
+    sortLabel: "Sort by",
     upcomingTasks: "Upcoming (7 days)",
     allDays: "All days",
     tasksDueCount: "{count} due",
@@ -287,15 +297,16 @@ export const enNested: MessageTree = {
     viewKanban: "Kanban",
     clearFilters: "Clear filters",
     anyAssignee: "Anyone",
-    sortDeadline: "Sort: deadline",
-    sortPriority: "Sort: priority",
-    sortCreated: "Sort: newest",
+    sortDeadline: "Deadline (soonest first)",
+    sortPriority: "Priority (highest first)",
+    sortCreated: "Date created (newest first)",
     noUpcoming: "No upcoming deadlines in this range.",
     miniCalPrevMonth: "Previous month",
     miniCalNextMonth: "Next month",
     calendarLayoutHint:
       "Calendar layout highlights the week planner and your daily plan. Switch to Kanban to manage columns.",
     quickFilters: "Focus",
+    deadlinePresets: "Deadline focus",
     filterChipAll: "All",
     filterChipOverdue: "Overdue",
     filterChipToday: "Today",
@@ -314,5 +325,15 @@ export const enNested: MessageTree = {
     noAssigneeShort: "—",
     filtersActiveHint:
       "Results are filtered. Reset filters to show all tasks matching your role.",
+  },
+  analytics: {
+    pageTitle: "Analytics",
+    pageSubtitle:
+      "Workload overview and trends for the shared board (administrators and managers).",
+    navLabel: "Analytics",
+    chartStatusTitle: "Tasks by status",
+    chartPriorityTitle: "Tasks by priority",
+    chartCreatedTitle: "Tasks created per week",
+    chartEmpty: "Not enough task data for this chart yet.",
   },
 };

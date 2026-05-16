@@ -2,6 +2,7 @@ import { ForbiddenRpcException, TaskNotFoundRpcException } from "@challenge/exce
 import type { CreateCommentPayload } from "@challenge/types";
 import { UserRole } from "@challenge/types";
 import { Injectable } from "@nestjs/common";
+import { RpcException } from "@nestjs/microservices";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Task } from "src/task/entity/task.entity";
 import { Repository } from "typeorm";
@@ -46,9 +47,22 @@ export class CommentService {
       this.assertTaskVisible(task, data.authorId, data.requesterRole);
     }
 
-    const { requesterRole, ...row } = data;
-    void requesterRole;
-    const savedComment = await this.commentRepository.save(row);
+    const textContent = (data.content ?? '').trim().slice(0, 1000);
+    const imageUrl = data.imageUrl?.trim() ?? null;
+
+    if (!imageUrl && textContent.length < 3) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "INVALID_COMMENT_BODY",
+      });
+    }
+
+    const savedComment = await this.commentRepository.save({
+      taskId: data.taskId,
+      authorId: data.authorId,
+      content: textContent,
+      imageUrl,
+    });
 
     return savedComment;
   }

@@ -43,12 +43,14 @@ import {
 import { canManageAssignments } from "@/lib/rbac";
 import type { TaskPriority } from "@challenge/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback, type ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import TaskDetailsPanel from "./TaskDetailsPanel";
 import TaskHistory from "./TaskHistory";
 import TaskParticipants from "./TaskParticipants";
+
+const COMMENT_IMAGE_UPLOAD_LIMIT = 5 * 1024 * 1024;
 
 interface TaskDetailDialogProps {
   taskId: string | null;
@@ -151,10 +153,62 @@ export function TaskDetailDialog({
     reset,
   } = useForm<CommentFormData>({
     resolver: zodResolver(commentSchemaDyn),
+    defaultValues: { content: "" },
   });
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const commentFileInputRef = useRef<HTMLInputElement>(null);
+  const [commentAttachment, setCommentAttachment] = useState<File | null>(null);
+  const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState<string | null>(
+    null,
+  );
+
+  const clearCommentAttachment = useCallback(() => {
+    setCommentAttachment(null);
+    if (commentFileInputRef.current) commentFileInputRef.current.value = "";
+  }, []);
+
+  useEffect(() => {
+    if (!commentAttachment) {
+      setAttachmentPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(commentAttachment);
+    setAttachmentPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [commentAttachment]);
+
+  useEffect(() => {
+    reset({ content: "" });
+    clearCommentAttachment();
+  }, [taskId, reset, clearCommentAttachment]);
+
+  const tryAcceptCommentFiles = useCallback(
+    (files: File[]) => {
+      const f = files.find((item) =>
+        /^image\/(jpeg|png|gif|webp)$/.test(item.type),
+      );
+      if (!f) {
+        if (files.length > 0) toast.error(t("comments.invalidImageType"));
+        return;
+      }
+      if (f.size > COMMENT_IMAGE_UPLOAD_LIMIT) {
+        toast.error(t("comments.imageTooLarge"));
+        return;
+      }
+      setCommentAttachment(f);
+    },
+    [t],
+  );
+
+  const onCommentAttachmentInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    tryAcceptCommentFiles(Array.from(event.target.files ?? []));
+    event.target.value = "";
+  };
+
+  const pickCommentAttachment = () => commentFileInputRef.current?.click();
 
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
@@ -205,12 +259,26 @@ export function TaskDetailDialog({
     }
   };
 
-  const onSubmitComment = async (data: CommentFormData) => {
+  const onSubmitComment = async (
+    data: CommentFormData,
+    attachmentFromForm: File | null,
+  ) => {
     if (!taskId) return;
+    if (!attachmentFromForm && data.content.trim().length < 3) {
+      toast.error(t("validation.commentMinForTextOnly"));
+      return;
+    }
     try {
-      await addComment.mutateAsync({ id: taskId, data });
+      await addComment.mutateAsync({
+        id: taskId,
+        data: {
+          content: data.content.trim(),
+          ...(attachmentFromForm ? { attachment: attachmentFromForm } : {}),
+        },
+      });
       toast.success(t("task.commentAddedToast"));
-      reset();
+      reset({ content: "" });
+      clearCommentAttachment();
     } catch (error: unknown) {
       const errAny = error as { response?: { data?: { message?: string } } };
       toast.error(
@@ -327,6 +395,13 @@ export function TaskDetailDialog({
                     onSubmitComment={onSubmitComment}
                     isSubmitting={isSubmitting}
                     isEditing={isEditing}
+                    attachment={commentAttachment}
+                    attachmentPreviewUrl={attachmentPreviewUrl}
+                    commentFileInputRef={commentFileInputRef}
+                    onCommentAttachmentPick={pickCommentAttachment}
+                    onCommentAttachmentInputChange={onCommentAttachmentInputChange}
+                    acceptCommentFilesAttempt={tryAcceptCommentFiles}
+                    onClearAttachment={clearCommentAttachment}
                   />
                 </div>
               </ScrollArea>

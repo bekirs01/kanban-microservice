@@ -103,11 +103,24 @@ export class NotificationsService {
   async notifyNewComment(payload: TaskNotificationPayload) {
     if (!payload.comment) return;
 
+    const raw = payload.comment.content?.trim() ?? "";
+    const hasImage = !!payload.comment.imageUrl;
+    let snippet = "";
+    if (raw.length > 0) {
+      snippet = raw.length > 30 ? `${raw.slice(0, 30)}…` : raw;
+    }
+    if (!snippet && hasImage) {
+      snippet = "[Image]";
+    } else if (snippet && hasImage) {
+      snippet = `${snippet} [Image]`;
+    }
+    if (!snippet) snippet = "…";
+
     for (const userId of payload.recipients) {
       const notification = await this.saveNotification(
         userId,
         'Novo Comentário',
-        `Em "${payload.task.title}": ${payload.comment.content.slice(0, 30)}...`
+        `Em "${payload.task.title}": ${snippet}`
       );
 
       this.wsGateway.notifyUser(userId, 'comment:new', {
