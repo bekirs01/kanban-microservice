@@ -195,6 +195,7 @@ export const trNested: MessageTree = {
     previewAlt: "Ön izleme",
     invalidImageType: "JPEG, PNG, GIF veya WEBP kullanın.",
     imageTooLarge: "Görsel boyutu en fazla 5 MB olabilir.",
+    archivedLocked: "Arşivlenmiş görevlerde yorumlar salt okunur.",
   },
   participants: {
     title: "Katılımcılar",
@@ -334,5 +335,21 @@ export const trNested: MessageTree = {
     chartPriorityTitle: "Önceliğe göre görevler",
     chartCreatedTitle: "Haftalık oluşturulan görevler",
     chartEmpty: "Bu grafik için henüz yeterli veri yok.",
+  },
+  archive: {
+    navLabel: "Arşiv",
+    pageTitle: "Arşiv",
+    pageSubtitle:
+      "Yönetici veya müdür onayıyla panodan kaldırılan görevler.",
+    empty: "Arşivde görev yok.",
+    approveButton: "Arşive onayla",
+    restoreButton: "Panoya geri al",
+    archivedBadge: "Arşivde",
+    archivedOnLabel: "Arşiv tarihi: {date}",
+    toastArchived: "Görev arşive taşındı.",
+    toastRestored: "Görev panele geri alındı.",
+    errorArchive: "Görev arşive alınamadı.",
+    errorRestore: "Görev geri alınamadı.",
+    errorInvalidStatus: "Yalnızca İnceleme veya Tamamlandı durumundaki görevler arşive alınabilir.",
   },
 };

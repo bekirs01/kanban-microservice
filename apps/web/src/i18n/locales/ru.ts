@@ -194,6 +194,7 @@ export const ruNested: MessageTree = {
     previewAlt: "Предпросмотр изображения",
     invalidImageType: "Поддерживаются JPEG, PNG, GIF или WEBP.",
     imageTooLarge: "Максимальный размер файла — 5 МБ.",
+    archivedLocked: "Для архивных задач комментарии доступны только для чтения.",
   },
   participants: {
     title: "Участники",
@@ -333,5 +334,22 @@ export const ruNested: MessageTree = {
     chartPriorityTitle: "Задачи по приоритету",
     chartCreatedTitle: "Созданные задачи по неделям",
     chartEmpty: "Пока недостаточно данных для диаграммы.",
+  },
+  archive: {
+    navLabel: "Архив",
+    pageTitle: "Архив",
+    pageSubtitle:
+      "Задачи, одобренные администратором или менеджером и убранные с доски.",
+    empty: "В архиве нет задач.",
+    approveButton: "Отправить в архив",
+    restoreButton: "Вернуть на доску",
+    archivedBadge: "В архиве",
+    archivedOnLabel: "В архиве с {date}",
+    toastArchived: "Задача перемещена в архив.",
+    toastRestored: "Задача возвращена на доску.",
+    errorArchive: "Не удалось отправить задачу в архив.",
+    errorRestore: "Не удалось вернуть задачу из архива.",
+    errorInvalidStatus:
+      "В архив можно отправить только задачи в статусах «На проверке» или «Готово».",
   },
 };

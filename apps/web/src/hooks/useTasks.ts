@@ -72,6 +72,40 @@ export function useDeleteTask() {
   });
 }
 
+export function useArchiveTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => tasksService.archiveTask(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          (q.queryKey[0] === TASKS_QUERY_ROOT ||
+            q.queryKey[0] === "task" ||
+            q.queryKey[0] === "taskHistory"),
+      });
+    },
+  });
+}
+
+export function useUnarchiveTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => tasksService.unarchiveTask(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          (q.queryKey[0] === TASKS_QUERY_ROOT ||
+            q.queryKey[0] === "task" ||
+            q.queryKey[0] === "taskHistory"),
+      });
+    },
+  });
+}
+
 export function useAssignTask() {
   const queryClient = useQueryClient();
 

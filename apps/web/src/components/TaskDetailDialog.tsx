@@ -21,9 +21,11 @@ import { useTaskComments } from "@/hooks/useTaskComments";
 import { useTaskHistory } from "@/hooks/useTaskHistory";
 import {
   useAddComment,
+  useArchiveTask,
   useAssignTask,
   useDeleteTask,
   useTask,
+  useUnarchiveTask,
   useUnassignTask,
   useUpdateTask,
 } from "@/hooks/useTasks";
@@ -66,6 +68,9 @@ export function TaskDetailDialog({
   const { t } = useTranslation();
   const { user } = useAuth();
   const manageAssignments = canManageAssignments(user?.role);
+
+  const archiveMutation = useArchiveTask();
+  const unarchiveMutation = useUnarchiveTask();
 
   const commentSchemaDyn = useMemo(() => buildCommentSchema(t), [t]);
   const updateTaskSchemaDyn = useMemo(() => buildUpdateTaskSchema(t), [t]);
@@ -353,6 +358,46 @@ export function TaskDetailDialog({
     }
   };
 
+  const isArchived = Boolean(task?.archivedAt);
+  const showApproveArchive =
+    manageAssignments &&
+    !isArchived &&
+    (task?.status === "REVIEW" || task?.status === "DONE");
+  const showRestore = manageAssignments && isArchived;
+
+  useEffect(() => {
+    if (isArchived) setIsEditing(false);
+  }, [isArchived]);
+
+  const handleApproveArchive = async () => {
+    if (!taskId) return;
+    try {
+      await archiveMutation.mutateAsync(taskId);
+      toast.success(t("archive.toastArchived"));
+      onOpenChange(false);
+    } catch (err: unknown) {
+      const errAny = err as { response?: { data?: { message?: string } } };
+      const code = errAny.response?.data?.message;
+      if (code === "TASK_ARCHIVE_INVALID_STATUS") {
+        toast.error(t("archive.errorInvalidStatus"));
+      } else {
+        toast.error(errAny.response?.data?.message ?? t("archive.errorArchive"));
+      }
+    }
+  };
+
+  const handleRestoreFromArchive = async () => {
+    if (!taskId) return;
+    try {
+      await unarchiveMutation.mutateAsync(taskId);
+      toast.success(t("archive.toastRestored"));
+      onOpenChange(false);
+    } catch (err: unknown) {
+      const errAny = err as { response?: { data?: { message?: string } } };
+      toast.error(errAny.response?.data?.message ?? t("archive.errorRestore"));
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1000px] h-[90vh] md:h-[85vh] p-0 overflow-hidden flex flex-col bg-background/95 backdrop-blur-sm">
@@ -361,7 +406,12 @@ export function TaskDetailDialog({
           taskId={taskId}
           isLoading={isLoading}
           isEditing={isEditing}
-          canEditOrDelete={manageAssignments}
+          canEditOrDelete={manageAssignments && !isArchived}
+          showApproveArchive={showApproveArchive}
+          showRestore={showRestore}
+          isArchiveBusy={archiveMutation.isPending || unarchiveMutation.isPending}
+          onApproveArchive={handleApproveArchive}
+          onRestoreFromArchive={handleRestoreFromArchive}
           onStartEdit={() => setIsEditing(true)}
           onCancelEdit={() => {
             if (task) resetTask(mapTaskToForm(task));
@@ -395,6 +445,7 @@ export function TaskDetailDialog({
                     onSubmitComment={onSubmitComment}
                     isSubmitting={isSubmitting}
                     isEditing={isEditing}
+                    commentsDisabled={isArchived}
                     attachment={commentAttachment}
                     attachmentPreviewUrl={attachmentPreviewUrl}
                     commentFileInputRef={commentFileInputRef}
@@ -408,7 +459,7 @@ export function TaskDetailDialog({
             </div>
 
             <div className="p-4 border-t bg-muted/10 shrink-0 z-10">
-              {isEditing ? (
+              {isEditing && !isArchived ? (
                 <form onSubmit={handleSubmitTask(onSubmitUpdate)}>
                   <div className="flex items-center justify-end gap-2">
                     <Button
@@ -457,7 +508,7 @@ export function TaskDetailDialog({
               handleToggleAssign={handleToggleAssign}
               handleRemoveAssignee={handleRemoveAssignee}
               removingAssignee={removingAssignee}
-              manageAssignments={manageAssignments}
+              manageAssignments={manageAssignments && !task?.archivedAt}
             />
 
             <Separator />

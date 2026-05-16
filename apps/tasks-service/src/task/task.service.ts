@@ -1,6 +1,7 @@
 import { ForbiddenRpcException, TaskNotFoundRpcException } from '@challenge/exceptions';
 import {
   ActionType,
+  ArchiveTaskRpcPayload,
   AssignTaskPayload,
   CreateCommentPayload,
   CreateTaskPayload,
@@ -13,14 +14,15 @@ import {
   TaskNotificationPayload,
   UpdateTaskPayload,
   UserRole,
+  TaskStatus,
 } from '@challenge/types';
 import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CommentService } from 'src/comment/comment.service';
 import { Comment } from 'src/comment/entity/comment.entity';
 import { AuditChanges, TaskHistory } from 'src/history/entity/task-history.entity';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { DeleteResult } from 'typeorm/browser';
 import { Task } from './entity/task.entity';
 
@@ -63,6 +65,9 @@ export class TaskService {
 
   private assertTaskVisible(task: Task, userId: string, roleHint?: string): void {
     const role = this.normalizeRole(roleHint);
+    if (task.archivedAt && !this.isElevated(role)) {
+      throw new ForbiddenRpcException();
+    }
     if (this.isElevated(role)) return;
     if (!this.canParticipate(task, userId)) {
       throw new ForbiddenRpcException();
@@ -101,7 +106,6 @@ export class TaskService {
 
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
     if (!task) throw new TaskNotFoundRpcException();
-
     const recipientSet = new Set([task.creatorId, ...(task.assignees || [])].filter(Boolean));
     recipientSet.delete(data.userId);
     const recipients = [...recipientSet];
@@ -133,6 +137,10 @@ export class TaskService {
     const role = this.normalizeRole(data.requesterRole);
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
     if (!task) throw new TaskNotFoundRpcException();
+
+    if (task.archivedAt) {
+      throw new ForbiddenRpcException();
+    }
 
     if (role === UserRole.USER) {
       this.assertTaskVisible(task, data.authorId, data.requesterRole);
@@ -187,15 +195,28 @@ export class TaskService {
     const { limit = 10, page = 1, userId, sharedBoard } = pagination;
     const role = this.normalizeRole(pagination.requesterRole);
     const effectiveSharedBoard = sharedBoard === true && this.isElevated(role);
+    const wantArchived =
+      pagination.archived === true && this.isElevated(role);
 
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.taskRepository.createQueryBuilder('task');
 
+    if (wantArchived) {
+      queryBuilder.where('task.archivedAt IS NOT NULL');
+    } else {
+      queryBuilder.where('task.archivedAt IS NULL');
+    }
+
     if (!effectiveSharedBoard) {
-      queryBuilder
-        .where('task.creatorId = :userId', { userId })
-        .orWhere('task.assignees ILIKE :userIdPattern', { userIdPattern: `%${userId}%` });
+      queryBuilder.andWhere(
+        new Brackets((b) => {
+          b.where('task.creatorId = :userId', { userId }).orWhere(
+            'task.assignees ILIKE :userIdPattern',
+            { userIdPattern: `%${userId}%` },
+          );
+        }),
+      );
     }
 
     queryBuilder.skip(skip).take(limit);
@@ -236,6 +257,10 @@ export class TaskService {
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
 
     if (!task) throw new TaskNotFoundRpcException();
+
+    if (task.archivedAt) {
+      throw new ForbiddenRpcException();
+    }
 
     if (!task.assignees) task.assignees = [];
 
@@ -280,6 +305,10 @@ export class TaskService {
 
     if (!task) throw new TaskNotFoundRpcException();
 
+    if (task.archivedAt) {
+      throw new ForbiddenRpcException();
+    }
+
     if (!task.assignees) task.assignees = [];
 
     if (task.assignees.includes(data.assigneeId)) {
@@ -318,6 +347,10 @@ export class TaskService {
   async comment(data: CreateCommentPayload): Promise<Comment> {
     const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
     if (!task) throw new TaskNotFoundRpcException();
+
+    if (task.archivedAt) {
+      throw new ForbiddenRpcException();
+    }
 
     const createdComment = await this.commentService.create(data);
 
@@ -360,6 +393,84 @@ export class TaskService {
     this.notificationClient.emit('task.comment', notifyPayload);
 
     return createdComment;
+  }
+
+  async archiveTask(data: ArchiveTaskRpcPayload): Promise<Task> {
+    const role = this.normalizeRole(data.requesterRole);
+    if (!this.isElevated(role)) {
+      throw new ForbiddenRpcException();
+    }
+
+    const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
+    if (!task) throw new TaskNotFoundRpcException();
+    if (task.archivedAt) {
+      return task;
+    }
+    if (task.status !== TaskStatus.REVIEW && task.status !== TaskStatus.DONE) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "TASK_ARCHIVE_INVALID_STATUS",
+      });
+    }
+
+    task.archivedAt = new Date();
+    const saved = await this.taskRepository.save(task);
+
+    await this.historyRepository.save({
+      taskId: task.id,
+      action: ActionType.UPDATE,
+      changes: {
+        old: { archivedAt: null },
+        new: { archivedAt: saved.archivedAt },
+      },
+      changedBy: data.userId,
+    });
+
+    const ch: AuditChanges = {
+      old: { archivedAt: null },
+      new: { archivedAt: saved.archivedAt },
+    };
+    this.notifyUpdate(saved, ch, data.userId);
+
+    return saved;
+  }
+
+  async unarchiveTask(data: ArchiveTaskRpcPayload): Promise<Task> {
+    const role = this.normalizeRole(data.requesterRole);
+    if (!this.isElevated(role)) {
+      throw new ForbiddenRpcException();
+    }
+
+    const task = await this.taskRepository.findOne({ where: { id: data.taskId } });
+    if (!task) throw new TaskNotFoundRpcException();
+    if (!task.archivedAt) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "TASK_NOT_ARCHIVED",
+      });
+    }
+
+    const prevArchived = task.archivedAt;
+    task.archivedAt = null;
+    const saved = await this.taskRepository.save(task);
+
+    await this.historyRepository.save({
+      taskId: task.id,
+      action: ActionType.UPDATE,
+      changes: {
+        old: { archivedAt: prevArchived },
+        new: { archivedAt: null },
+      },
+      changedBy: data.userId,
+    });
+
+    const ch: AuditChanges = {
+      old: { archivedAt: prevArchived },
+      new: { archivedAt: null },
+    };
+    this.notifyUpdate(saved, ch, data.userId);
+
+    return saved;
   }
 
   async getTaskHistory(data: TaskHistoryPayload): Promise<PaginationResultDto<ResponseTaskHistoryDto[]>> {

@@ -4,7 +4,6 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
-import { useUsersByIds } from "@/hooks/useUsersByIds";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTranslation } from "@/i18n/useTranslation";
 import {
@@ -12,7 +11,7 @@ import {
   statusDistributionForAnalytics,
   weeklyCreatedBuckets,
 } from "@/lib/dashboardAnalytics";
-import { computeStats, uniqueUserIdsFromTasks } from "@/lib/dashboardDerived";
+import { computeStats } from "@/lib/dashboardDerived";
 import {
   canManageAssignments,
   isAdminRole,
@@ -20,7 +19,6 @@ import {
 } from "@/lib/rbac";
 import type { TaskPriority, TaskStatus } from "@challenge/types";
 import { format } from "date-fns";
-import { useMemo } from "react";
 import { toast } from "sonner";
 
 export function AnalyticsPage() {
@@ -35,11 +33,6 @@ export function AnalyticsPage() {
   });
 
   const tasks = tasksData?.items ?? [];
-
-  const teamIds = useMemo(() => uniqueUserIdsFromTasks(tasks), [tasks]);
-  const { data: teamUsers = [] } = useUsersByIds(
-    teamIds.length ? teamIds : undefined,
-  );
 
   const stats = computeStats(tasks, user?.id);
 
@@ -79,10 +72,9 @@ export function AnalyticsPage() {
     <div className="flex min-h-screen flex-col bg-muted/25">
       <div className="flex min-h-0 flex-1">
         <DashboardSidebar
-          teamUsers={teamUsers}
           showInvite={isAdminRole(user?.role)}
-          showParticipantsNav={isAdminRole(user?.role)}
           showAnalyticsNav={managerRole}
+          showArchiveNav={managerRole}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <DashboardHeader

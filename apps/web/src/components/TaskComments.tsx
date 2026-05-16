@@ -29,6 +29,7 @@ interface Props {
   ) => void | Promise<void>;
   isSubmitting: boolean;
   isEditing: boolean;
+  commentsDisabled?: boolean;
   attachment: File | null;
   attachmentPreviewUrl: string | null;
   commentFileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -47,6 +48,7 @@ export const TaskComments: React.FC<Props> = ({
   onSubmitComment,
   isSubmitting,
   isEditing,
+  commentsDisabled = false,
   attachment,
   attachmentPreviewUrl,
   commentFileInputRef,
@@ -146,7 +148,11 @@ export const TaskComments: React.FC<Props> = ({
 
       <div className="h-2" />
 
-      {!isEditing ? (
+      {commentsDisabled ? (
+        <p className="mt-2 text-sm text-muted-foreground">{t("comments.archivedLocked")}</p>
+      ) : null}
+
+      {!isEditing && !commentsDisabled ? (
         <form
           onSubmit={handleSubmit(async (data: CommentFormData) =>
             onSubmitComment(data, attachment))}

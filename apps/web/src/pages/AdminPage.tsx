@@ -24,7 +24,9 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-const ROLE_OPTIONS = ["USER", "MANAGER", "ADMIN"] as UserRole[];
+const TABLE_ROLE_OPTIONS = ["USER", "MANAGER", "ADMIN"] as UserRole[];
+
+const CREATE_FORM_ROLE_OPTIONS = ["USER", "ADMIN"] as UserRole[];
 
 const ROLE_TRANSLATION_KEYS: Record<UserRole, string> = {
   ADMIN: "admin.role.admin",
@@ -212,7 +214,7 @@ export function AdminPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLE_OPTIONS.map((role) => (
+                    {CREATE_FORM_ROLE_OPTIONS.map((role) => (
                       <SelectItem key={role} value={role}>
                         {t(ROLE_TRANSLATION_KEYS[role])}
                       </SelectItem>
@@ -241,19 +243,19 @@ export function AdminPage() {
             ) : (
               <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[56rem] text-sm">
+                  <table className="w-full table-fixed border-collapse text-sm">
                     <thead className="border-b bg-muted/40 text-left">
                       <tr>
-                        <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <th className="w-[18%] px-2 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {t("admin.username")}
                         </th>
-                        <th className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <th className="w-[36%] px-2 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {t("admin.email")}
                         </th>
-                        <th className="min-w-[10.5rem] px-4 py-3.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <th className="w-[26%] px-2 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {t("admin.roleLabel")}
                         </th>
-                        <th className="w-[1%] whitespace-nowrap px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        <th className="w-[20%] px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {t("admin.actionsColumn")}
                         </th>
                       </tr>
@@ -268,17 +270,17 @@ export function AdminPage() {
                           deleteMut.isPending && deleteMut.variables === u.id;
                         return (
                           <tr key={u.id} className="hover:bg-muted/30">
-                            <td className="max-w-[10rem] px-4 py-3 align-middle">
+                            <td className="px-2 py-2 align-middle">
                               <span className="block truncate font-medium" title={u.username}>
                                 {u.username}
                               </span>
                             </td>
-                            <td className="max-w-[14rem] px-4 py-3 align-middle md:max-w-xs">
+                            <td className="px-2 py-2 align-middle">
                               <span className="block truncate text-muted-foreground" title={u.email}>
                                 {u.email}
                               </span>
                             </td>
-                            <td className="px-4 py-3 align-middle">
+                            <td className="px-2 py-2 align-middle">
                               <Select
                                 value={u.role}
                                 onValueChange={(v) => {
@@ -288,11 +290,11 @@ export function AdminPage() {
                                 }}
                                 disabled={rowBusyPatch || rowBusyDelete}
                               >
-                                <SelectTrigger className="h-10 w-full min-w-[10rem] max-w-[15rem] bg-background shadow-sm">
+                                <SelectTrigger className="h-9 w-full bg-background text-xs shadow-sm">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {ROLE_OPTIONS.map((role) => (
+                                  {TABLE_ROLE_OPTIONS.map((role) => (
                                     <SelectItem key={role} value={role}>
                                       {t(ROLE_TRANSLATION_KEYS[role])}
                                     </SelectItem>
@@ -300,13 +302,13 @@ export function AdminPage() {
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className="px-4 py-3 align-middle">
-                              <div className="flex flex-nowrap items-center justify-end">
+                            <td className="px-2 py-2 align-middle">
+                              <div className="flex justify-end">
                                 <Button
                                   type="button"
                                   variant="destructive"
                                   size="sm"
-                                  className="h-9 shrink-0 px-4"
+                                  className="h-8 shrink-0 px-3 text-xs"
                                   disabled={
                                     rowBusyDelete ||
                                     rowBusyPatch ||

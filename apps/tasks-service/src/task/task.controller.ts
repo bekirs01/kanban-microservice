@@ -1,4 +1,5 @@
 import type {
+  ArchiveTaskRpcPayload,
   AssignTaskPayload,
   CreateCommentPayload,
   CreateTaskPayload,
@@ -68,5 +69,15 @@ export class TaskController {
   @MessagePattern("task.find_one")
   getById(@Payload() payload: TaskAccessRpcPayload) {
     return this.taskService.getById(payload);
+  }
+
+  @MessagePattern("task.archive")
+  archive(@Payload() data: ArchiveTaskRpcPayload) {
+    return this.taskService.archiveTask(data);
+  }
+
+  @MessagePattern("task.unarchive")
+  unarchive(@Payload() data: ArchiveTaskRpcPayload) {
+    return this.taskService.unarchiveTask(data);
   }
 }

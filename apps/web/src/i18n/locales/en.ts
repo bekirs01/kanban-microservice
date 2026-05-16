@@ -196,6 +196,7 @@ export const enNested: MessageTree = {
     previewAlt: "Comment attachment preview",
     invalidImageType: "Use a JPEG, PNG, GIF, or WEBP image.",
     imageTooLarge: "Maximum image size is 5 MB.",
+    archivedLocked: "Comments are read-only for archived tasks.",
   },
   participants: {
     title: "Participants",
@@ -335,5 +336,21 @@ export const enNested: MessageTree = {
     chartPriorityTitle: "Tasks by priority",
     chartCreatedTitle: "Tasks created per week",
     chartEmpty: "Not enough task data for this chart yet.",
+  },
+  archive: {
+    navLabel: "Archive",
+    pageTitle: "Archive",
+    pageSubtitle:
+      "Tasks approved by an administrator or manager and moved off the board.",
+    empty: "No archived tasks.",
+    approveButton: "Approve to archive",
+    restoreButton: "Restore to board",
+    archivedBadge: "Archived",
+    archivedOnLabel: "Archived on {date}",
+    toastArchived: "Task moved to archive.",
+    toastRestored: "Task restored to the board.",
+    errorArchive: "Could not archive task.",
+    errorRestore: "Could not restore task.",
+    errorInvalidStatus: "Only tasks in Review or Done can be archived.",
   },
 };

@@ -36,6 +36,16 @@ export const tasksService = {
     await api.delete(`/api/tasks/${id}`);
   },
 
+  async archiveTask(id: string): Promise<ResponseTaskDto> {
+    const response = await api.post<ResponseTaskDto>(`/api/tasks/${id}/archive`);
+    return response.data;
+  },
+
+  async unarchiveTask(id: string): Promise<ResponseTaskDto> {
+    const response = await api.post<ResponseTaskDto>(`/api/tasks/${id}/unarchive`);
+    return response.data;
+  },
+
   async assignUser(id: string, data: AssignTaskDto): Promise<ResponseTaskDto> {
     const response = await api.post<ResponseTaskDto>(`/api/tasks/${id}/assign`, data);
     return response.data;

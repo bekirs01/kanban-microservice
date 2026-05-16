@@ -8,3 +8,6 @@ GRANT ALL PRIVILEGES ON SCHEMA notification_service TO postgres;
 
 ALTER TABLE IF EXISTS task_service.comments
   ADD COLUMN IF NOT EXISTS "imageUrl" character varying(2048);
+
+ALTER TABLE IF EXISTS task_service.tasks
+  ADD COLUMN IF NOT EXISTS "archivedAt" TIMESTAMP;

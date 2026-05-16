@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -193,7 +193,7 @@ function KanbanColumn({
           isOver && "bg-muted/60 border-primary/10 ring-2 ring-primary/5",
         )}
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain pr-1">
           {tasks.length === 0 ? (
             <p className="text-xs text-muted-foreground px-2 py-6 text-center">
               {t("board.emptyColumn")}
@@ -242,7 +242,7 @@ function DraggableTaskCard({
       <div
         ref={setNodeRef}
         style={style}
-        className="opacity-0 h-[120px] rounded-lg bg-muted border-2 border-dashed"
+        className="opacity-0 min-h-[6.25rem] rounded-xl bg-muted border-2 border-dashed"
       />
     );
   }
@@ -288,25 +288,31 @@ function TaskCard({
   return (
     <Card
       className={cn(
-        "min-w-0 max-w-full hover:shadow-md transition-all duration-200 border-border/50 group bg-card",
-        overdue && "border-l-4 border-l-destructive",
+        "min-h-[6.25rem] min-w-0 max-w-full overflow-hidden rounded-xl border-border/60 bg-card py-0 shadow-sm transition-all duration-150 group hover:border-border hover:shadow-md",
+        overdue && "border-l-[3px] border-l-destructive",
         isDraggable &&
           !isOverlay &&
-          "cursor-grab hover:shadow-md transition-all duration-200",
+          "cursor-grab active:cursor-grabbing",
         !isDraggable &&
           !isOverlay &&
-          "cursor-default hover:shadow-none",
+          "cursor-default hover:shadow-sm",
         isOverlay &&
-          "rotate-2 shadow-xl cursor-grabbing ring-1 ring-primary/20 scale-105 z-50",
+          "rotate-2 shadow-xl cursor-grabbing ring-1 ring-primary/20 scale-[1.02] z-50 min-h-[6.25rem]",
       )}
     >
-      <CardHeader className="min-w-0 space-y-2.5 pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <CardContent className="flex min-w-0 flex-col gap-2 p-3">
+        <div className="flex items-start gap-2">
+          <h4
+            className="min-w-0 flex-1 line-clamp-2 break-words text-sm font-semibold leading-snug text-foreground transition-colors [overflow-wrap:anywhere] group-hover:text-primary"
+            title={task.title}
+          >
+            {task.title}
+          </h4>
+          <div className="flex shrink-0 flex-col items-end gap-1 pt-px">
             <Badge
               variant="outline"
               className={cn(
-                "text-[10px] font-medium border px-2 py-0.5 rounded-md",
+                "h-6 shrink-0 rounded-md border px-2 py-0 text-[11px] font-medium leading-none",
                 PRIORITY_STYLES[task.priority],
               )}
             >
@@ -315,7 +321,7 @@ function TaskCard({
             {overdue ? (
               <Badge
                 variant="outline"
-                className="text-[10px] border-destructive/50 text-destructive"
+                className="h-6 shrink-0 rounded-md border px-2 py-0 text-[10px] leading-none border-destructive/50 text-destructive"
               >
                 {t("dashboard.overdue")}
               </Badge>
@@ -323,26 +329,9 @@ function TaskCard({
           </div>
         </div>
 
-        <h4 className="break-words text-sm font-semibold leading-snug text-foreground/90 transition-colors [overflow-wrap:anywhere] group-hover:text-primary">
-          {task.title}
-        </h4>
-      </CardHeader>
-
-      <CardContent className="min-w-0 p-4 pt-0">
-        <p className="mb-4 line-clamp-2 break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
-          {task.description || t("task.noDescriptionFallback")}
-        </p>
-
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary/85 transition-all"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t border-border/40 mt-2">
-          <div className="flex items-center text-xs text-muted-foreground/80 gap-1.5">
-            <Calendar className="w-3.5 h-3.5" />
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <div className="flex items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
+            <Calendar className="size-3.5 shrink-0 opacity-75" aria-hidden />
             <span>
               {task.deadline
                 ? format(new Date(task.deadline), "dd MMM yy", {
@@ -351,26 +340,43 @@ function TaskCard({
                 : t("dashboard.noDeadlineShort")}
             </span>
           </div>
-
           {task.assignees?.length ? (
             <AssigneesStack ids={task.assignees} />
           ) : (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="max-w-[4.5rem] truncate text-[10px] text-muted-foreground">
               {t("dashboard.unassigned")}
             </span>
           )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 pt-0.5">
+          <span className="text-[11px] font-semibold tabular-nums text-foreground/90">
+            {progressPct}%
+          </span>
+          <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function AssigneesStack({ ids }: { ids: string[] }) {
+function AssigneesStack({ ids, compact }: { ids: string[]; compact?: boolean }) {
   const { data: users } = useUsersByIds(ids);
   const display = users?.slice(0, 3) || [];
   const rest = ids.length - 3;
 
   if (!ids.length) return null;
+
+  const avatarClass = compact
+    ? "size-5 border border-background ring-1 ring-muted"
+    : "size-6 border-2 border-background ring-1 ring-muted";
+
+  const fallbackTextClass = compact ? "text-[8px]" : "text-[9px]";
 
   return (
     <div className="flex items-center -space-x-2">
@@ -378,8 +384,10 @@ function AssigneesStack({ ids }: { ids: string[] }) {
         {display.map((user) => (
           <Tooltip key={user.id}>
             <TooltipTrigger asChild>
-              <Avatar className="w-6 h-6 border-2 border-background ring-1 ring-muted cursor-default">
-                <AvatarFallback className="text-[9px] font-bold bg-muted text-muted-foreground">
+              <Avatar className={`${avatarClass} cursor-default`}>
+                <AvatarFallback
+                  className={`${fallbackTextClass} font-bold bg-muted text-muted-foreground`}
+                >
                   {user.username.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -391,7 +399,13 @@ function AssigneesStack({ ids }: { ids: string[] }) {
         ))}
       </TooltipProvider>
       {rest > 0 ? (
-        <div className="w-6 h-6 rounded-full bg-muted border-2 border-background ring-1 ring-muted flex items-center justify-center text-[8px] font-medium text-muted-foreground z-10">
+        <div
+          className={
+            compact
+              ? "z-10 flex size-5 items-center justify-center rounded-full border border-background bg-muted text-[7px] font-medium text-muted-foreground ring-1 ring-muted"
+              : "z-10 flex size-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[8px] font-medium text-muted-foreground ring-1 ring-muted"
+          }
+        >
           +{rest}
         </div>
       ) : null}
@@ -406,8 +420,8 @@ function KanbanSkeleton() {
         <div key={slot} className="space-y-4">
           <Skeleton className="h-8 w-1/2" />
           <div className="space-y-3">
-            <Skeleton className="h-32 w-full rounded-xl" />
-            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="min-h-[6.25rem] w-full rounded-xl" />
+            <Skeleton className="min-h-[6.25rem] w-full rounded-xl" />
           </div>
         </div>
       ))}

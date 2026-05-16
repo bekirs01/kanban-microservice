@@ -24,6 +24,11 @@ interface Props {
   isLoading: boolean;
   isEditing: boolean;
   canEditOrDelete?: boolean;
+  showApproveArchive?: boolean;
+  showRestore?: boolean;
+  isArchiveBusy?: boolean;
+  onApproveArchive?: () => void;
+  onRestoreFromArchive?: () => void;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onDelete: () => void;
@@ -46,6 +51,11 @@ export const TaskDetailHeader: React.FC<Props> = ({
   isLoading,
   isEditing,
   canEditOrDelete = true,
+  showApproveArchive = false,
+  showRestore = false,
+  isArchiveBusy = false,
+  onApproveArchive,
+  onRestoreFromArchive,
   onStartEdit,
   onCancelEdit,
   onDelete,
@@ -118,12 +128,37 @@ export const TaskDetailHeader: React.FC<Props> = ({
                 <Badge variant="secondary" className="font-medium">
                   {t(statusTranslationKey)}
                 </Badge>
+                {task.archivedAt ? (
+                  <Badge variant="outline" className="font-medium border-dashed">
+                    {t("archive.archivedBadge")}
+                  </Badge>
+                ) : null}
               </>
             )
           )}
         </div>
       </div>
-      <div className="shrink-0 flex items-center gap-2">
+      <div className="shrink-0 flex items-center gap-2 flex-wrap justify-end">
+        {!isLoading && task && !isEditing && showApproveArchive && onApproveArchive ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={isArchiveBusy}
+            onClick={onApproveArchive}
+          >
+            {t("archive.approveButton")}
+          </Button>
+        ) : null}
+        {!isLoading && task && !isEditing && showRestore && onRestoreFromArchive ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={isArchiveBusy}
+            onClick={onRestoreFromArchive}
+          >
+            {t("archive.restoreButton")}
+          </Button>
+        ) : null}
         {!isLoading && task && !isEditing && canEditOrDelete ? (
           <>
             <Button variant="ghost" size="sm" onClick={onStartEdit}>

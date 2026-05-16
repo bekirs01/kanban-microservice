@@ -21,6 +21,13 @@ export class PaginationQueryDto {
   )
   @IsBoolean()
   sharedBoard?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === true || value === 'true',
+  )
+  @IsBoolean()
+  archived?: boolean;
 }
 
 export interface PaginationQueryPayload extends PaginationQueryDto {

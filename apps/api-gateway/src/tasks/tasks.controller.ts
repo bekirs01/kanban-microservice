@@ -1,4 +1,4 @@
-import { AssignTaskDto, AssignTaskPayload, CreateCommentPayload, CreateTaskDto, CreateTaskPayload, DeleteTaskPayload, PaginationQueryDto, PaginationQueryPayload, TaskAccessRpcPayload, TaskHistoryPayload, UpdateTaskDto, UpdateTaskPayload } from '@challenge/types';
+import { ArchiveTaskRpcPayload, AssignTaskDto, AssignTaskPayload, CreateCommentPayload, CreateTaskDto, CreateTaskPayload, DeleteTaskPayload, PaginationQueryDto, PaginationQueryPayload, TaskAccessRpcPayload, TaskHistoryPayload, UpdateTaskDto, UpdateTaskPayload } from '@challenge/types';
 import { BadRequestException, Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ClientProxy } from '@nestjs/microservices';
@@ -109,6 +109,34 @@ export class TasksController {
       requesterRole: role,
     };
     return this.tasksClient.send("task.unassign_user", payload);
+  }
+
+  @UseGuards(AuthGuard("jwt"))
+  @Post("/:id/archive")
+  @ApiOperation({ summary: "Archive task (elevated only)" })
+  @ApiParam({ name: "id", description: "Task ID (UUID)" })
+  archiveTask(@Param("id", ParseUUIDPipe) taskId: string, @Req() req: any) {
+    const role = normalizeRequesterRole(req.user?.role);
+    const payload: ArchiveTaskRpcPayload = {
+      taskId,
+      userId: req.user.id,
+      requesterRole: role,
+    };
+    return this.tasksClient.send("task.archive", payload);
+  }
+
+  @UseGuards(AuthGuard("jwt"))
+  @Post("/:id/unarchive")
+  @ApiOperation({ summary: "Restore task from archive (elevated only)" })
+  @ApiParam({ name: "id", description: "Task ID (UUID)" })
+  unarchiveTask(@Param("id", ParseUUIDPipe) taskId: string, @Req() req: any) {
+    const role = normalizeRequesterRole(req.user?.role);
+    const payload: ArchiveTaskRpcPayload = {
+      taskId,
+      userId: req.user.id,
+      requesterRole: role,
+    };
+    return this.tasksClient.send("task.unarchive", payload);
   }
 
   @UseGuards(AuthGuard("jwt"))
@@ -238,6 +266,7 @@ export class TasksController {
       userId: request.user.id,
       requesterRole: role,
       sharedBoard: pagination.sharedBoard === true && elevated,
+      archived: pagination.archived === true && elevated ? true : undefined,
     };
     return this.tasksClient.send('task.find_all', payload);
   }

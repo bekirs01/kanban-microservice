@@ -13,6 +13,7 @@ import {
 import { canManageAssignments } from "./lib/rbac";
 import { AdminPage } from "./pages/AdminPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { ArchivePage } from "./pages/ArchivePage";
 import { KanbanPage } from "./pages/KanbanPage";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -89,6 +90,20 @@ const analyticsRoute = createRoute({
   },
 });
 
+const archiveRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/archive",
+  component: ArchivePage,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    if (!canManageAssignments(context.auth.user?.role)) {
+      throw redirect({ to: "/kanban" });
+    }
+  },
+});
+
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
@@ -122,6 +137,7 @@ const routeTree = rootRoute.addChildren([
   registerRoute,
   kanbanRoute,
   analyticsRoute,
+  archiveRoute,
   adminRoute,
 ]);
 

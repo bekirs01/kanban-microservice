@@ -32,6 +32,9 @@ export class CommentService {
 
   private assertTaskVisible(task: Task, userId: string, roleHint?: string): void {
     const role = this.normalizeRole(roleHint);
+    if (task.archivedAt && !this.isElevated(role)) {
+      throw new ForbiddenRpcException();
+    }
     if (this.isElevated(role)) return;
     if (!this.canParticipate(task, userId)) {
       throw new ForbiddenRpcException();
@@ -43,6 +46,9 @@ export class CommentService {
     if (!task) throw new TaskNotFoundRpcException();
 
     const role = this.normalizeRole(data.requesterRole);
+    if (task.archivedAt) {
+      throw new ForbiddenRpcException();
+    }
     if (!this.isElevated(role)) {
       this.assertTaskVisible(task, data.authorId, data.requesterRole);
     }

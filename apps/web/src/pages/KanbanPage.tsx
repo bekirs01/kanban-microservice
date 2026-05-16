@@ -1,9 +1,7 @@
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { DailyPlanPanel } from "@/components/dashboard/DailyPlanPanel";
-import { DashboardActivityPanel } from "@/components/dashboard/DashboardActivityPanel";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { DashboardParticipantsPanel } from "@/components/dashboard/DashboardParticipantsPanel";
 import { DashboardToolbar } from "@/components/dashboard/DashboardToolbar";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
 import { KanbanBoard } from "@/components/KanbanBoard";
@@ -73,9 +71,7 @@ export function KanbanPage() {
         });
       });
     };
-    if (norm === "dashboard-participants") {
-      scrollTo("dashboard-participants");
-    } else if (norm === "dashboard-mini-calendar") {
+    if (norm === "dashboard-mini-calendar") {
       scrollTo("dashboard-mini-calendar");
     }
   }, [hash]);
@@ -231,19 +227,15 @@ export function KanbanPage() {
 
   const showNewTask = (user?.role ?? "USER") !== "USER";
 
-  const showAdminParticipants =
-    isAdminRole(user?.role) && (adminDirectory?.length ?? 0) > 0;
-
   const managerRole = canManageAssignments(user?.role);
 
   return (
     <div className="flex min-h-screen flex-col bg-muted/25">
       <div className="flex min-h-0 flex-1">
         <DashboardSidebar
-          teamUsers={teamUsers}
           showInvite={isAdminRole(user?.role)}
-          showParticipantsNav={isAdminRole(user?.role)}
           showAnalyticsNav={managerRole}
+          showArchiveNav={managerRole}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <DashboardHeader
@@ -343,13 +335,6 @@ export function KanbanPage() {
                       onOpenCalendar={scrollToMiniCalendar}
                       resolveInitials={resolveInitials}
                     />
-                    {showAdminParticipants && adminDirectory ? (
-                      <DashboardParticipantsPanel
-                        users={adminDirectory}
-                        tasks={fetchedTasks}
-                      />
-                    ) : null}
-                    <DashboardActivityPanel />
                   </div>
                 </div>
               </div>

@@ -1,34 +1,28 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/i18n/useTranslation";
 import { cn } from "@/lib/utils";
-import type { ResponseUserDto } from "@challenge/types";
 import {
+  Archive as ArchiveIcon,
   BarChart3,
   CalendarDays,
   LayoutDashboard,
   UserPlus,
-  Users,
 } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ComponentType } from "react";
 
 interface DashboardSidebarProps {
-  teamUsers: ResponseUserDto[];
   showInvite: boolean;
-  showParticipantsNav?: boolean;
   showAnalyticsNav?: boolean;
+  showArchiveNav?: boolean;
 }
 
 export function DashboardSidebar({
-  teamUsers,
   showInvite,
-  showParticipantsNav = false,
   showAnalyticsNav = false,
+  showArchiveNav = false,
 }: DashboardSidebarProps) {
   const { t } = useTranslation();
-  const displayUsers = teamUsers.slice(0, 6);
-  const extra = Math.max(0, teamUsers.length - displayUsers.length);
 
   const { pathname, hash } = useRouterState({
     select: (s) => ({
@@ -38,16 +32,13 @@ export function DashboardSidebar({
   });
 
   const normHash = hash.replace(/^#/, "");
-  const participantsHash =
-    pathname === "/kanban" && normHash === "dashboard-participants";
   const calendarHash =
     pathname === "/kanban" && normHash === "dashboard-mini-calendar";
 
-  const boardActive =
-    pathname === "/kanban" && !participantsHash && !calendarHash;
+  const boardActive = pathname === "/kanban" && !calendarHash;
   const calendarNavActive = calendarHash;
-  const participantsActive = participantsHash && showParticipantsNav;
   const analyticsActive = pathname === "/analytics";
+  const archiveActive = pathname === "/archive";
 
   const navBtnClass = (active: boolean) =>
     cn(
@@ -64,7 +55,7 @@ export function DashboardSidebar({
     labelKey,
     active,
   }: {
-    to: "/kanban" | "/analytics";
+    to: "/kanban" | "/analytics" | "/archive";
     linkHash?: string;
     icon: ComponentType<{ className?: string }>;
     labelKey: string;
@@ -118,46 +109,26 @@ export function DashboardSidebar({
             active={analyticsActive}
           />
         ) : null}
-        {showParticipantsNav ? (
+        {showArchiveNav ? (
           <ItemLink
-            to="/kanban"
-            linkHash="dashboard-participants"
-            icon={Users}
-            labelKey="dashboard.participants"
-            active={participantsActive}
+            to="/archive"
+            icon={ArchiveIcon}
+            labelKey="archive.navLabel"
+            active={archiveActive}
           />
         ) : null}
       </nav>
 
-      <div className="space-y-3 border-t p-3">
-        <div>
-          <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("dashboard.teamOnline")}
-          </p>
-          <div className="mt-2 flex items-center gap-2 px-1">
-            <div className="flex -space-x-2">
-              {displayUsers.map((u) => (
-                <Avatar key={u.id} className="h-8 w-8 border-2 border-background">
-                  <AvatarFallback className="text-[10px]">
-                    {u.username.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              ))}
-            </div>
-            {extra > 0 ? (
-              <span className="text-xs text-muted-foreground">+{extra}</span>
-            ) : null}
-          </div>
-        </div>
-        {showInvite ? (
+      {showInvite ? (
+        <div className="border-t p-3">
           <Button asChild className="w-full" size="sm" variant="secondary">
             <Link to="/admin">
               <UserPlus className="mr-2 h-4 w-4" />
               {t("dashboard.invite")}
             </Link>
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </aside>
   );
 }

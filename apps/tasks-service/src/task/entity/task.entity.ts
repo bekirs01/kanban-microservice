@@ -44,4 +44,7 @@ export class Task {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @Column({ type: "timestamp", nullable: true })
+  archivedAt!: Date | null;
 }

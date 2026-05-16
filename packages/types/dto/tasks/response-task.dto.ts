@@ -10,4 +10,5 @@ export class ResponseTaskDto {
   deadline: Date;
   creatorId: string;
   createdAt: Date;
+  archivedAt?: Date | string | null;
 }
