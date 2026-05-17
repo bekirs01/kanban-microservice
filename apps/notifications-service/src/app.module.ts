@@ -8,6 +8,7 @@ import { Notification } from './notifications/entity/notification.entity';
 
 const {
   entities: _entitiesGlob,
+  migrations: _migrationsGlob,
   ...typeOrmRuntimeOptions
 } = dataSourceOptions;
 

@@ -11,6 +11,7 @@ import { User } from './user/entity/user.entity';
 
 const {
   entities: _entitiesGlob,
+  migrations: _migrationsGlob,
   ...typeOrmRuntimeOptions
 } = dataSourceOptions;
 
