@@ -26,5 +26,5 @@ echo "  Token (Railway Dashboard → Account → Tokens):"
 echo "    export RAILWAY_TOKEN=\"...\""
 echo "    railway whoami"
 echo ""
-echo "Docs: ./RAILWAY_DEPLOY_RU.md"
+echo "Docs: ./DOCUMENTATION_ARCHIVE.md (search for RAILWAY_DEPLOY_RU)"
 exit 1
