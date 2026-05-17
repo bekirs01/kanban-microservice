@@ -8,15 +8,18 @@ import {
 } from "@/components/ui/select";
 import { useTranslation } from "@/i18n/useTranslation";
 import {
+  applyArchiveInsightsFilters,
   computeWorkerLoad,
   type AnalyticsUiFilters,
   type AnalyticsPeriod,
 } from "@/lib/analyticsScope";
 import {
+  approximateStatusProgressPercent,
   computeStats,
   countCreatedToday,
   deadlineYmd,
   isTaskOverdue,
+  toLocalYmd,
 } from "@/lib/dashboardDerived";
 import {
   maxCount,
@@ -28,9 +31,10 @@ import {
 import { cn } from "@/lib/utils";
 import type { ResponseTaskDto, TaskPriority, TaskStatus } from "@challenge/types";
 import { TaskPriority as TaskPriorityEnum, TaskStatus as TaskStatusEnum } from "@challenge/types/enums";
-import { addDays, format, isSameWeek, startOfDay } from "date-fns";
+import { addDays, format, isSameWeek, startOfDay, subDays } from "date-fns";
 import {
   AlertCircle,
+  Archive,
   CalendarDays,
   CalendarRange,
   CheckCircle2,
@@ -354,6 +358,7 @@ function TaskStripRow({
 
 export function AnalyticsDashboard({
   tasks,
+  archivedTasks,
   filters,
   onFiltersChange,
   isAdmin,
@@ -364,6 +369,7 @@ export function AnalyticsDashboard({
   onTaskOpen,
 }: {
   tasks: ResponseTaskDto[];
+  archivedTasks: ResponseTaskDto[];
   filters: AnalyticsUiFilters;
   onFiltersChange: (next: AnalyticsUiFilters) => void;
   isAdmin: boolean;
@@ -379,6 +385,42 @@ export function AnalyticsDashboard({
   const createdToday = useMemo(() => countCreatedToday(tasks), [tasks]);
   const completionRate =
     tasks.length === 0 ? 0 : Math.round((stats.done / tasks.length) * 100);
+
+  const archiveSlice = useMemo(
+    () => applyArchiveInsightsFilters(archivedTasks, filters),
+    [archivedTasks, filters],
+  );
+
+  const archiveKpis = useMemo(() => {
+    const total = archiveSlice.length;
+    const weekStart = subDays(startOfDay(new Date()), 7).getTime();
+    const archivedLastWeek = archiveSlice.filter((task) => {
+      if (!task.archivedAt) return false;
+      const at = new Date(String(task.archivedAt)).getTime();
+      return !Number.isNaN(at) && at >= weekStart;
+    }).length;
+    const avg =
+      total === 0
+        ? null
+        : Math.round(
+            archiveSlice.reduce(
+              (sum, task) => sum + approximateStatusProgressPercent(task.status),
+              0,
+            ) / total,
+          );
+    const overdueResolved = archiveSlice.filter((task) => {
+      if (!task.deadline || !task.archivedAt) return false;
+      const due = deadlineYmd(task);
+      const archived = toLocalYmd(startOfDay(new Date(String(task.archivedAt))));
+      return Boolean(due && due < archived && task.status === "DONE");
+    }).length;
+    return {
+      total,
+      archivedLastWeek,
+      avg,
+      overdueResolved,
+    };
+  }, [archiveSlice]);
 
   const statusRows = useMemo(() => {
     const rows = statusDistributionForAnalytics(tasks, statusLabel);
@@ -632,6 +674,65 @@ export function AnalyticsDashboard({
           {t("analytics.resetFilters")}
         </Button>
       </div>
+
+      <section className="rounded-xl border border-border/80 bg-muted/20 p-3 sm:p-4">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <Archive className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold tracking-tight">
+            {t("analytics.archiveInsightsTitle")}
+          </h2>
+        </div>
+        <p className="mb-3 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+          {t("analytics.archiveInsightsScope")}
+        </p>
+        {archivedTasks.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {t("analytics.archiveInsightsEmptyDataset")}
+          </p>
+        ) : archiveSlice.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t("analytics.archiveInsightsEmpty")}</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-lg border border-border/70 bg-card/90 px-3 py-2.5 shadow-sm">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("analytics.archiveInsightsTotalArchived")}
+                </p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                  {archiveKpis.total}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-card/90 px-3 py-2.5 shadow-sm">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("analytics.archiveInsightsRecent")}
+                </p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                  {archiveKpis.archivedLastWeek}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-card/90 px-3 py-2.5 shadow-sm">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("analytics.archiveInsightsAvgCompletion")}
+                </p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                  {archiveKpis.avg == null ? t("analytics.noData") : `${archiveKpis.avg}%`}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/70 bg-card/90 px-3 py-2.5 shadow-sm">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("analytics.archiveInsightsOverdueResolved")}
+                </p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums">
+                  {archiveKpis.overdueResolved}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+              {t("analytics.archiveInsightsFootnote")}
+            </p>
+          </>
+        )}
+      </section>
 
       <p className="text-xs text-muted-foreground">
         {t("analytics.filteredResults", { count: tasks.length })}

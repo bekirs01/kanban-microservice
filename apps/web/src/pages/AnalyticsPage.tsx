@@ -33,19 +33,33 @@ export function AnalyticsPage() {
   });
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  const { data: tasksData, isLoading } = useTasks({
+  const { data: tasksData, isLoading: tasksLoading } = useTasks({
     page: 1,
     limit: 500,
     sharedBoard: sharedBoardQueryFlag(user?.role),
   });
 
+  const { data: archivedData, isLoading: archivedLoading } = useTasks({
+    page: 1,
+    limit: 500,
+    archived: true,
+    sharedBoard: sharedBoardQueryFlag(user?.role),
+  });
+
   const raw = tasksData?.items ?? [];
+  const rawArchived = archivedData?.items ?? [];
 
   const rbacTasks = useMemo(() => {
     if (!user?.id) return raw;
     if (!seesOnlyAssignedTasks(user.role)) return raw;
     return raw.filter((x) => (x.assignees ?? []).includes(user.id));
   }, [raw, user?.id, user?.role]);
+
+  const rbacArchivedTasks = useMemo(() => {
+    if (!user?.id) return rawArchived;
+    if (!seesOnlyAssignedTasks(user.role)) return rawArchived;
+    return rawArchived.filter((x) => (x.assignees ?? []).includes(user.id));
+  }, [rawArchived, user?.id, user?.role]);
 
   const uniqueIds = useMemo(
     () => uniqueUserIdsFromTasks(rbacTasks),
@@ -93,6 +107,8 @@ export function AnalyticsPage() {
   const priorityLabel = (p: TaskPriority) =>
     t(`task.priority.${p.toLowerCase() as "low" | "medium" | "high" | "urgent"}`);
 
+  const isLoading = tasksLoading || archivedLoading;
+
   return (
     <AuthenticatedShell headerTitleKey="analytics.title">
       {isLoading ? (
@@ -101,6 +117,7 @@ export function AnalyticsPage() {
         <>
           <AnalyticsDashboard
             tasks={filteredTasks}
+            archivedTasks={rbacArchivedTasks}
             filters={filters}
             onFiltersChange={setFilters}
             isAdmin={admin}

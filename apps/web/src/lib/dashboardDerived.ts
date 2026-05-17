@@ -300,6 +300,16 @@ export function uniqueUserIdsFromTasks(tasks: ResponseTaskDto[]): string[] {
   return [...s];
 }
 
+export function approximateStatusProgressPercent(status: TaskStatus): number {
+  const map: Record<TaskStatus, number> = {
+    TODO: 10,
+    IN_PROGRESS: 50,
+    REVIEW: 75,
+    DONE: 100,
+  };
+  return map[status];
+}
+
 export function plannerRangeLabel(
   anchor: Date,
   granularity: DashboardViewGranularity,

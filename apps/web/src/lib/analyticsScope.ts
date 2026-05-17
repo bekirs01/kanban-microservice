@@ -57,6 +57,38 @@ export function applyAnalyticsFilters(
   return list;
 }
 
+export function archivedAtTime(task: ResponseTaskDto): number | null {
+  if (!task.archivedAt) return null;
+  const t = new Date(String(task.archivedAt)).getTime();
+  return Number.isNaN(t) ? null : t;
+}
+
+export function applyArchiveInsightsFilters(
+  archivedTasks: ResponseTaskDto[],
+  filters: AnalyticsUiFilters,
+  ref = new Date(),
+): ResponseTaskDto[] {
+  let list = archivedTasks;
+  const ps = analyticsPeriodStart(filters.period, ref);
+  if (ps) {
+    const t0 = ps.getTime();
+    list = list.filter((task) => {
+      const archived = archivedAtTime(task);
+      return archived !== null && archived >= t0;
+    });
+  }
+  if (filters.status !== "all") {
+    list = list.filter((t) => t.status === filters.status);
+  }
+  if (filters.priority !== "all") {
+    list = list.filter((t) => t.priority === filters.priority);
+  }
+  if (filters.assigneeId !== "all") {
+    list = list.filter((t) => (t.assignees ?? []).includes(filters.assigneeId));
+  }
+  return list;
+}
+
 export interface WorkerLoadRow {
   userId: string;
   assigned: number;
