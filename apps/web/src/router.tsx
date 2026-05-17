@@ -18,6 +18,7 @@ import { KanbanPage } from "./pages/KanbanPage";
 import { Login } from "./pages/Login";
 import { ProfilePage } from "./pages/ProfilePage";
 import { Register } from "./pages/Register";
+import { WorkerDetailPage } from "./pages/WorkerDetailPage";
 
 type User = ResponseAuthDto["user"];
 
@@ -150,14 +151,18 @@ const workersRoute = createRoute({
 const workerDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workers/$workerId",
-  component: () => null,
+  component: WorkerDetailRouteComponent,
   beforeLoad: ({ context }) => {
     if (!context.auth.isAuthenticated) {
       throw redirect({ to: "/login" });
     }
-    throw redirect({ to: "/kanban" });
   },
 });
+
+function WorkerDetailRouteComponent() {
+  const { workerId } = workerDetailRoute.useParams();
+  return <WorkerDetailPage workerId={workerId} />;
+}
 
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,

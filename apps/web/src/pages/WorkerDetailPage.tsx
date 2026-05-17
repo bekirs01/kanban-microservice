@@ -7,10 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/i18n/useTranslation";
 import { Link } from "@tanstack/react-router";
-import { isAdminRole } from "@/lib/rbac";
 import { displayUsername, userInitials } from "@/lib/userDisplay";
 import { workerSpecializationTranslationKey } from "@/lib/workerSpecializationI18n";
-import { fetchWorkerById, patchWorkerAsAdmin } from "@/services/profile.service";
+import { fetchWorkerById, patchMyProfile } from "@/services/profile.service";
 import { WorkerSpecialization } from "@challenge/types/enums";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -30,9 +29,8 @@ const SPEC_ORDER: WorkerSpecialization[] = [
 export function WorkerDetailPage(props: { workerId: string }) {
   const { workerId } = props;
   const { t } = useTranslation();
-  const { user: me } = useAuth();
+  const { user: me, refreshProfile } = useAuth();
   const qc = useQueryClient();
-  const admin = isAdminRole(me?.role);
 
   const { data } = useQuery({
     queryKey: ["workerProfile", workerId],
@@ -43,8 +41,6 @@ export function WorkerDetailPage(props: { workerId: string }) {
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [skills, setSkills] = useState("");
-  const [telegram, setTelegram] = useState("");
-  const [github, setGithub] = useState("");
   const [spec, setSpec] = useState<WorkerSpecialization | "">("");
 
   useEffect(() => {
@@ -52,34 +48,32 @@ export function WorkerDetailPage(props: { workerId: string }) {
     setDisplayName(data.displayName ?? "");
     setBio(data.bio ?? "");
     setSkills((data.skills ?? []).join(", "));
-    setTelegram(data.telegramContact ?? "");
-    setGithub(data.githubUrl ?? "");
     setSpec((data.specialization as WorkerSpecialization | null) ?? "");
   }, [data]);
 
   const mutate = useMutation({
     mutationFn: () =>
-      patchWorkerAsAdmin(workerId, {
+      patchMyProfile({
         displayName: displayName.trim() ? displayName.trim() : null,
         bio: bio.trim() ? bio.trim() : null,
         skills: skills
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
-        telegramContact: telegram.trim() ? telegram.trim() : null,
-        githubUrl: github.trim() ? github.trim() : null,
         specialization: spec || null,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       void qc.invalidateQueries({ queryKey: ["workerProfile", workerId] });
       void qc.invalidateQueries({ queryKey: ["workersDirectory"] });
       void qc.invalidateQueries({ queryKey: ["usersByIds"] });
+      await qc.refetchQueries({ queryKey: ["profileMine"] });
+      await refreshProfile();
       toast.success(t("profile.saveSuccess"));
     },
     onError: () => toast.error(t("common.error")),
   });
 
-  const canEdit = admin && data?.role === "USER";
+  const canEdit = me?.id === workerId && data?.role === "USER";
 
   if (!data) {
     return (
@@ -119,12 +113,7 @@ export function WorkerDetailPage(props: { workerId: string }) {
           <p className="text-sm text-muted-foreground">{t("workers.pageSubtitle")}</p>
         ) : (
           <>
-            {canEdit ? (
-              <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                {t("profile.adminEditTitle")}
-              </p>
-            ) : me?.role === "USER" &&
-              me?.id !== workerId ? (
+            {!canEdit && me?.id !== workerId ? (
               <p className="text-xs text-muted-foreground">{t("profile.peerViewHint")}</p>
             ) : null}
 
@@ -157,14 +146,6 @@ export function WorkerDetailPage(props: { workerId: string }) {
               <div className="space-y-1">
                 <Label>{t("profile.bioLabel")}</Label>
                 <Textarea rows={5} value={bio} disabled={!canEdit} onChange={(e) => setBio(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label>{t("profile.telegramLabel")}</Label>
-                <Input value={telegram} disabled={!canEdit} onChange={(e) => setTelegram(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label>{t("profile.githubLabel")}</Label>
-                <Input value={github} disabled={!canEdit} onChange={(e) => setGithub(e.target.value)} />
               </div>
             </div>
 

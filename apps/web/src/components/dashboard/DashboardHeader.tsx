@@ -53,18 +53,10 @@ export function DashboardHeader({
       <div className="flex flex-col gap-3 px-4 py-3 lg:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-[1_1_auto] flex-wrap items-center gap-3 lg:gap-4">
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
-                K
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-muted-foreground">
-                  {t("dashboard.appBrand")}
-                </p>
-                <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">
-                  {t(titleKey)}
-                </h1>
-              </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">
+                {t(titleKey)}
+              </h1>
             </div>
 
             <div

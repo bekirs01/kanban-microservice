@@ -330,7 +330,7 @@ function TaskCard({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div className="flex shrink-0 items-center justify-between gap-2">
           <div className="flex items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
             <Calendar className="size-3.5 shrink-0 opacity-75" aria-hidden />
             <span>
@@ -368,8 +368,10 @@ function TaskCard({
 
 function AssigneesStack({ ids, compact }: { ids: string[]; compact?: boolean }) {
   const { data: users } = useUsersByIds(ids);
-  const display = users?.slice(0, 3) || [];
-  const rest = ids.length - 3;
+  const maxVisible = compact ? 3 : 4;
+  const usersById = new Map((users ?? []).map((user) => [user.id, user]));
+  const visibleIds = ids.slice(0, maxVisible);
+  const rest = Math.max(0, ids.length - maxVisible);
 
   if (!ids.length) return null;
 
@@ -382,25 +384,31 @@ function AssigneesStack({ ids, compact }: { ids: string[]; compact?: boolean }) 
   return (
     <div className="flex items-center -space-x-2">
       <TooltipProvider delayDuration={300}>
-        {display.map((user) => (
-          <Tooltip key={user.id}>
-            <TooltipTrigger asChild>
-              <Avatar className={`${avatarClass} cursor-default`}>
-                {user.avatarData ? (
-                  <AvatarImage src={user.avatarData} alt="" />
-                ) : null}
-                <AvatarFallback
-                  className={`${fallbackTextClass} font-bold bg-muted text-muted-foreground`}
-                >
-                  {userInitials(user)}
-                </AvatarFallback>
-              </Avatar>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">{displayUsername(user)}</p>
-            </TooltipContent>
-          </Tooltip>
-        ))}
+        {visibleIds.map((id) => {
+          const user = usersById.get(id);
+          const label = user ? displayUsername(user) : id;
+          const initials = user ? userInitials(user) : id.slice(0, 2).toUpperCase();
+
+          return (
+            <Tooltip key={id}>
+              <TooltipTrigger asChild>
+                <Avatar className={`${avatarClass} cursor-default`}>
+                  {user?.avatarData ? (
+                    <AvatarImage src={user.avatarData} alt="" />
+                  ) : null}
+                  <AvatarFallback
+                    className={`${fallbackTextClass} font-bold bg-muted text-muted-foreground`}
+                  >
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">{label}</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </TooltipProvider>
       {rest > 0 ? (
         <div
