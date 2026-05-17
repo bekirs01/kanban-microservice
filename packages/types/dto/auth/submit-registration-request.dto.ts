@@ -2,7 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { UserRole } from "../../enums";
 import { IsEmail, IsEnum, IsIn, IsString, MinLength } from "class-validator";
 
-const REQUESTABLE_REGISTRATION_ROLES = [UserRole.USER, UserRole.MANAGER] as const;
+const REQUESTABLE_REGISTRATION_ROLES = [UserRole.USER] as const;
 
 export class SubmitRegistrationRequestDto {
   @ApiProperty()
@@ -21,7 +21,7 @@ export class SubmitRegistrationRequestDto {
 
   @ApiProperty({ enum: REQUESTABLE_REGISTRATION_ROLES })
   @IsEnum(UserRole)
-  @IsIn([UserRole.USER, UserRole.MANAGER])
+  @IsIn([UserRole.USER])
   requestedRole!: typeof REQUESTABLE_REGISTRATION_ROLES[number];
 }
 
@@ -29,7 +29,7 @@ export interface SubmitRegistrationRpcPayload {
   username: string;
   email: string;
   password: string;
-  requestedRole: UserRole.USER | UserRole.MANAGER;
+  requestedRole: UserRole.USER;
 }
 
 export interface ListedPendingRegistrationDto {

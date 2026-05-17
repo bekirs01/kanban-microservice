@@ -18,7 +18,7 @@ export class AuthService {
     let user = await this.userService.getByEmail(dto.email);
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
 
-    if (!isMatch) throw new UnauthorizedRpcException("Email/Senha incorretos ou inválidos");
+    if (!isMatch) throw new UnauthorizedRpcException();
 
     user = await this.userService.promoteBootstrapIfNeeded(user);
 
@@ -61,8 +61,12 @@ export class AuthService {
 
       let user = await this.userService.getById(decodedJwt.sub);
 
+      if (user.refreshTokenHash == null) {
+        throw new RefreshTokenReuseException();
+      }
+
       const isMatch = await bcrypt.compare(payload.refreshToken, user.refreshTokenHash);
-      if (!isMatch) throw new RefreshTokenReuseException("Refresh token inválido ou reutilizado");
+      if (!isMatch) throw new RefreshTokenReuseException();
 
       user = await this.userService.promoteBootstrapIfNeeded(user);
 
@@ -82,7 +86,7 @@ export class AuthService {
       if (error instanceof RpcException) {
         throw error;
       }
-      throw new RefreshTokenReuseException("Refresh token inválido ou expirado");
+      throw new RefreshTokenReuseException();
     }
   }
 
@@ -98,17 +102,12 @@ export class AuthService {
       await this.userService.logout(user.id);
       return {}
     } catch (error) {
-      throw new InvalidTokenException("Refresh token inválido ou expirado");
+      throw new InvalidTokenException();
     }
   }
 
   private mapAuthUser(user: User) {
-    return {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    };
+    return this.userService.toResponseDto(user);
   }
 
   private async generateAccessToken(user: User) {

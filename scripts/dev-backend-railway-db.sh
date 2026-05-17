@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT"
-
-export DOCKER_HOST="${DOCKER_HOST:-unix://${HOME}/.colima/default/docker.sock}"
 
 ENV_FILE=".env.railway.local"
 if [ ! -f "$ENV_FILE" ]; then
@@ -36,17 +35,4 @@ for key in RAILWAY_DB_HOST RAILWAY_DB_PORT RAILWAY_DB_USER RAILWAY_DB_PASS RAILW
   check_nonempty "$key"
 done
 
-if command -v colima >/dev/null 2>&1; then
-  if ! docker info >/dev/null 2>&1; then
-    colima stop >/dev/null 2>&1 || true
-    colima start
-    docker context use colima 2>/dev/null || true
-  fi
-fi
-
-if ! docker info >/dev/null 2>&1; then
-  echo "Docker is not reachable."
-  exit 1
-fi
-
-exec docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.railway-db.yml up -d rabbitmq auth-service tasks-service notifications-service api-gateway web
+exec "$SCRIPT_DIR/docker-compose.sh" --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.railway-db.yml up -d rabbitmq auth-service tasks-service notifications-service api-gateway web

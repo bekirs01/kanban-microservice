@@ -1,40 +1,84 @@
-import { DashboardAnalyticsSection } from "@/components/dashboard/DashboardAnalyticsSection";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
-import { DashboardStats } from "@/components/dashboard/DashboardStats";
+import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
+import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
+import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import { useUsersByIds } from "@/hooks/useUsersByIds";
 import { useTranslation } from "@/i18n/useTranslation";
 import {
-  priorityDistributionForAnalytics,
-  statusDistributionForAnalytics,
-  weeklyCreatedBuckets,
-} from "@/lib/dashboardAnalytics";
-import { computeStats } from "@/lib/dashboardDerived";
+  applyAnalyticsFilters,
+  type AnalyticsUiFilters,
+} from "@/lib/analyticsScope";
+import { uniqueUserIdsFromTasks } from "@/lib/dashboardDerived";
 import {
-  canManageAssignments,
   isAdminRole,
+  seesOnlyAssignedTasks,
   sharedBoardQueryFlag,
 } from "@/lib/rbac";
+import { listAdminUsers } from "@/services/admin.service";
 import type { TaskPriority, TaskStatus } from "@challenge/types";
-import { format } from "date-fns";
-import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 
 export function AnalyticsPage() {
-  const { t, dateFnsLocale } = useTranslation();
-  const { isConnected } = useWebSocket();
-  const { user, logout } = useAuth();
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const admin = isAdminRole(user?.role);
+
+  const [filters, setFilters] = useState<AnalyticsUiFilters>({
+    period: "all",
+    status: "all",
+    priority: "all",
+    assigneeId: "all",
+  });
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const { data: tasksData, isLoading } = useTasks({
     page: 1,
-    limit: 100,
+    limit: 500,
     sharedBoard: sharedBoardQueryFlag(user?.role),
   });
 
-  const tasks = tasksData?.items ?? [];
+  const raw = tasksData?.items ?? [];
 
-  const stats = computeStats(tasks, user?.id);
+  const rbacTasks = useMemo(() => {
+    if (!user?.id) return raw;
+    if (!seesOnlyAssignedTasks(user.role)) return raw;
+    return raw.filter((x) => (x.assignees ?? []).includes(user.id));
+  }, [raw, user?.id, user?.role]);
+
+  const uniqueIds = useMemo(
+    () => uniqueUserIdsFromTasks(rbacTasks),
+    [rbacTasks],
+  );
+
+  const { data: usersByIds = [] } = useUsersByIds(uniqueIds);
+
+  const { data: adminUsers = [] } = useQuery({
+    queryKey: ["adminUsersDirectory"],
+    queryFn: listAdminUsers,
+    enabled: admin,
+  });
+
+  const workerDirectory = useMemo(() => {
+    if (admin) {
+      return adminUsers.map((u) => ({
+        id: u.id,
+        username: u.username,
+        email: u.email,
+      }));
+    }
+    return usersByIds.map((u) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+    }));
+  }, [admin, adminUsers, usersByIds]);
+
+  const filteredTasks = useMemo(
+    () => applyAnalyticsFilters(rbacTasks, filters),
+    [rbacTasks, filters],
+  );
 
   const statusLabel = (s: TaskStatus) => {
     const map: Record<TaskStatus, string> = {
@@ -49,80 +93,32 @@ export function AnalyticsPage() {
   const priorityLabel = (p: TaskPriority) =>
     t(`task.priority.${p.toLowerCase() as "low" | "medium" | "high" | "urgent"}`);
 
-  const statusRows = statusDistributionForAnalytics(tasks, statusLabel);
-  const priorityRows = priorityDistributionForAnalytics(tasks, priorityLabel);
-  const weekRows = weeklyCreatedBuckets(
-    tasks,
-    1,
-    8,
-    (weekStart) =>
-      format(weekStart, "d MMM", {
-        locale: dateFnsLocale,
-      }),
-  );
-
-  const handleLogout = async () => {
-    await logout();
-    toast.success(t("board.logoutToast"));
-  };
-
-  const managerRole = canManageAssignments(user?.role);
-
   return (
-    <div className="flex min-h-screen flex-col bg-muted/25">
-      <div className="flex min-h-0 flex-1">
-        <DashboardSidebar
-          showInvite={isAdminRole(user?.role)}
-          showAnalyticsNav={managerRole}
-          showArchiveNav={managerRole}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <DashboardHeader
-            isConnected={isConnected}
-            user={user}
-            layoutMode="kanban"
-            onLayoutMode={() => {}}
-            onLogout={handleLogout}
-            titleKey="analytics.pageTitle"
-            showLayoutToggle={false}
+    <AuthenticatedShell headerTitleKey="analytics.title">
+      {isLoading ? (
+        <p className="p-6 text-sm text-muted-foreground">{t("common.loadingShort")}</p>
+      ) : (
+        <>
+          <AnalyticsDashboard
+            tasks={filteredTasks}
+            filters={filters}
+            onFiltersChange={setFilters}
+            isAdmin={admin}
+            viewerId={user?.id}
+            workerDirectory={workerDirectory}
+            statusLabel={statusLabel}
+            priorityLabel={priorityLabel}
+            onTaskOpen={(id) => setSelectedTaskId(id)}
           />
-          <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1200px] space-y-6 p-4 pb-16 lg:p-6">
-              <p className="text-sm text-muted-foreground">
-                {t("analytics.pageSubtitle")}
-              </p>
-
-              {isLoading ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("common.loadingShort")}
-                </p>
-              ) : (
-                <>
-                  <DashboardStats stats={stats} />
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <DashboardAnalyticsSection
-                      title={t("analytics.chartStatusTitle")}
-                      rows={statusRows}
-                      emptyHint={t("analytics.chartEmpty")}
-                    />
-                    <DashboardAnalyticsSection
-                      title={t("analytics.chartPriorityTitle")}
-                      rows={priorityRows}
-                      emptyHint={t("analytics.chartEmpty")}
-                    />
-                    <DashboardAnalyticsSection
-                      title={t("analytics.chartCreatedTitle")}
-                      rows={weekRows}
-                      emptyHint={t("analytics.chartEmpty")}
-                      className="lg:col-span-2"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          <TaskDetailDialog
+            taskId={selectedTaskId}
+            open={!!selectedTaskId}
+            onOpenChange={(open) => {
+              if (!open) setSelectedTaskId(null);
+            }}
+          />
+        </>
+      )}
+    </AuthenticatedShell>
   );
 }

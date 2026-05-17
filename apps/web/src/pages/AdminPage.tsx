@@ -24,13 +24,12 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-const TABLE_ROLE_OPTIONS = ["USER", "MANAGER", "ADMIN"] as UserRole[];
+const TABLE_ROLE_OPTIONS = ["USER", "ADMIN"] as UserRole[];
 
 const CREATE_FORM_ROLE_OPTIONS = ["USER", "ADMIN"] as UserRole[];
 
 const ROLE_TRANSLATION_KEYS: Record<UserRole, string> = {
   ADMIN: "admin.role.admin",
-  MANAGER: "admin.role.manager",
   USER: "admin.role.user",
 };
 
@@ -282,7 +281,11 @@ export function AdminPage() {
                             </td>
                             <td className="px-2 py-2 align-middle">
                               <Select
-                                value={u.role}
+                                value={
+                                  TABLE_ROLE_OPTIONS.includes(u.role)
+                                    ? u.role
+                                    : ""
+                                }
                                 onValueChange={(v) => {
                                   const next = v as UserRole;
                                   if (next === u.role) return;
@@ -291,7 +294,9 @@ export function AdminPage() {
                                 disabled={rowBusyPatch || rowBusyDelete}
                               >
                                 <SelectTrigger className="h-9 w-full bg-background text-xs shadow-sm">
-                                  <SelectValue />
+                                  <SelectValue
+                                    placeholder={t(ROLE_TRANSLATION_KEYS[u.role])}
+                                  />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {TABLE_ROLE_OPTIONS.map((role) => (

@@ -1,5 +1,5 @@
 import { TaskPriority, TaskStatus } from "@challenge/types";
-import { Comment } from "src/comment/entity/comment.entity";
+import { Comment } from "../../comment/entity/comment.entity";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity("tasks")

@@ -6,6 +6,14 @@ import { dataSourceOptions } from '../db/datasource';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { HealthModule } from './health/health.module';
+import { RegistrationRequest } from './user/entity/registration-request.entity';
+import { User } from './user/entity/user.entity';
+
+const {
+  entities: _entitiesGlob,
+  migrations: _migrationsGlob,
+  ...typeOrmRuntimeOptions
+} = dataSourceOptions;
 
 @Module({
   imports: [
@@ -17,7 +25,10 @@ import { HealthModule } from './health/health.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    TypeOrmModule.forRoot(dataSourceOptions),
+    TypeOrmModule.forRoot({
+      ...typeOrmRuntimeOptions,
+      entities: [User, RegistrationRequest],
+    }),
     UserModule,
     AuthModule,
     HealthModule,

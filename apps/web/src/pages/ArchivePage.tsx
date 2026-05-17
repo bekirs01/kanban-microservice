@@ -1,16 +1,10 @@
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks, useUnarchiveTask } from "@/hooks/useTasks";
-import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTranslation } from "@/i18n/useTranslation";
-import {
-  canManageAssignments,
-  isAdminRole,
-  sharedBoardQueryFlag,
-} from "@/lib/rbac";
+import { sharedBoardQueryFlag } from "@/lib/rbac";
 import type { ResponseTaskDto } from "@challenge/types";
 import { format } from "date-fns";
 import { useState, type MouseEvent } from "react";
@@ -18,11 +12,8 @@ import { toast } from "sonner";
 
 export function ArchivePage() {
   const { t, dateFnsLocale } = useTranslation();
-  const { isConnected } = useWebSocket();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-
-  const managerRole = canManageAssignments(user?.role);
 
   const { data: tasksData, isLoading } = useTasks({
     page: 1,
@@ -34,11 +25,6 @@ export function ArchivePage() {
   const unarchiveTask = useUnarchiveTask();
 
   const tasks = tasksData?.items ?? [];
-
-  const handleLogout = async () => {
-    await logout();
-    toast.success(t("board.logoutToast"));
-  };
 
   const handleRestore = async (e: MouseEvent, taskId: string) => {
     e.stopPropagation();
@@ -60,72 +46,46 @@ export function ArchivePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/25">
-      <div className="flex min-h-0 flex-1">
-        <DashboardSidebar
-          showInvite={isAdminRole(user?.role)}
-          showAnalyticsNav={managerRole}
-          showArchiveNav={managerRole}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <DashboardHeader
-            isConnected={isConnected}
-            user={user}
-            layoutMode="kanban"
-            onLayoutMode={() => {}}
-            onLogout={handleLogout}
-            titleKey="archive.pageTitle"
-            showLayoutToggle={false}
-          />
-          <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[900px] space-y-4 p-4 pb-16 lg:p-6">
-              <p className="text-sm text-muted-foreground">
-                {t("archive.pageSubtitle")}
-              </p>
+    <AuthenticatedShell headerTitleKey="archive.pageTitle">
+      <div className="mx-auto max-w-[900px] space-y-4 p-4 pb-16 lg:p-6">
+        <p className="text-sm text-muted-foreground">{t("archive.pageSubtitle")}</p>
 
-              {isLoading ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("common.loadingShort")}
-                </p>
-              ) : tasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("archive.empty")}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {tasks.map((task) => (
-                    <li key={task.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTaskId(task.id)}
-                        className="flex w-full items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 text-left shadow-sm transition-colors hover:bg-muted/40"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-foreground">
-                            {task.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {t("archive.archivedOnLabel", {
-                              date: archivedOnLabel(task),
-                            })}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          disabled={unarchiveTask.isPending}
-                          onClick={(e) => handleRestore(e, task.id)}
-                        >
-                          {t("archive.restoreButton")}
-                        </Button>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">{t("common.loadingShort")}</p>
+        ) : tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("archive.empty")}</p>
+        ) : (
+          <ul className="space-y-2">
+            {tasks.map((task) => (
+              <li key={task.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTaskId(task.id)}
+                  className="flex w-full items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 text-left shadow-sm transition-colors hover:bg-muted/40"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-foreground">{task.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("archive.archivedOnLabel", {
+                        date: archivedOnLabel(task),
+                      })}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    disabled={unarchiveTask.isPending}
+                    onClick={(e) => handleRestore(e, task.id)}
+                  >
+                    {t("archive.restoreButton")}
+                  </Button>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <TaskDetailDialog
@@ -133,6 +93,6 @@ export function ArchivePage() {
         open={!!selectedTaskId}
         onOpenChange={(open) => !open && setSelectedTaskId(null)}
       />
-    </div>
+    </AuthenticatedShell>
   );
 }

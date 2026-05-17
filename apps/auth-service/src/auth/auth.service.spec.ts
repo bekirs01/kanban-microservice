@@ -19,6 +19,12 @@ describe("AuthService", () => {
     update: jest.fn(),
     create: jest.fn(),
     logout: jest.fn(),
+    promoteBootstrapIfNeeded: jest.fn(async (user) => user),
+    toResponseDto: jest.fn((user: { id: string; username: string; email: string }) => ({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+    })),
   };
 
   const mockJwtService = {
@@ -27,6 +33,7 @@ describe("AuthService", () => {
   };
 
   beforeEach(async () => {
+    process.env.JWT_REFRESH_SECRET = "test-refresh-secret";
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,

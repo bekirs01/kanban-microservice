@@ -1,16 +1,14 @@
 import { CreateTaskDialog } from "@/components/CreateTaskDialog";
 import { DailyPlanPanel } from "@/components/dashboard/DailyPlanPanel";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardToolbar } from "@/components/dashboard/DashboardToolbar";
 import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
+import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { TaskDetailDialog } from "@/components/TaskDetailDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useTasks } from "@/hooks/useTasks";
+import { TASKS_QUERY_ROOT, useTasks } from "@/hooks/useTasks";
 import { useUsersByIds } from "@/hooks/useUsersByIds";
-import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTranslation } from "@/i18n/useTranslation";
 import {
   applyClientTaskFilters,
@@ -25,19 +23,18 @@ import {
   seesOnlyAssignedTasks,
   sharedBoardQueryFlag,
 } from "@/lib/rbac";
-import { listAdminUsers } from "@/services/admin.service";
+import { displayUsername, userInitials } from "@/lib/userDisplay";
+import { listAdminUsers, type AdminListedUser } from "@/services/admin.service";
+import type { ResponseTaskDto, ResponseUserDto, TaskPriority, TaskStatus } from "@challenge/types";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { startOfDay, startOfMonth } from "date-fns";
-import { useQuery } from "@tanstack/react-query";
-import { useRouterState } from "@tanstack/react-router";
 import { RotateCcw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import type { ResponseTaskDto, TaskPriority, TaskStatus } from "@challenge/types";
+import { useCallback, useMemo, useState } from "react";
 
 export function KanbanPage() {
   const { t } = useTranslation();
-  const { isConnected } = useWebSocket();
-  const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -57,26 +54,7 @@ export function KanbanPage() {
   const [deadlineTo, setDeadlineTo] = useState("");
   const [sortMode, setSortMode] = useState<TaskSortMode>("deadline");
 
-  const hash = useRouterState({
-    select: (s) => s.location.hash,
-  });
-
-  useEffect(() => {
-    const norm = (hash ?? "").replace(/^#/, "");
-    const scrollTo = (id: string) => {
-      requestAnimationFrame(() => {
-        document.getElementById(id)?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      });
-    };
-    if (norm === "dashboard-mini-calendar") {
-      scrollTo("dashboard-mini-calendar");
-    }
-  }, [hash]);
-
-  const { data: tasksData, isLoading } = useTasks({
+  const { data: tasksData, isLoading, isFetching } = useTasks({
     page: 1,
     limit: 100,
     sharedBoard: sharedBoardQueryFlag(user?.role),
@@ -92,7 +70,10 @@ export function KanbanPage() {
     );
   }, [fetchedTasks, user?.id, user?.role]);
 
-  const { data: adminDirectory } = useQuery({
+  const { data: adminDirectory } = useQuery<
+
+    AdminListedUser[]
+  >({
     queryKey: ["adminUsers"],
     queryFn: listAdminUsers,
     enabled: isAdminRole(user?.role),
@@ -109,7 +90,9 @@ export function KanbanPage() {
 
   const assigneeOptions = useMemo(() => {
     const m = new Map<string, string>();
-    for (const u of teamUsers) m.set(u.id, u.username);
+    for (const u of teamUsers) {
+      m.set(u.id, displayUsername(u));
+    }
     if (isAdminRole(user?.role) && adminDirectory?.length) {
       for (const u of adminDirectory) {
         if (!m.has(u.id)) m.set(u.id, u.username);
@@ -121,17 +104,20 @@ export function KanbanPage() {
   }, [teamUsers, adminDirectory, user?.role]);
 
   const userById = useMemo(
-    () => Object.fromEntries(teamUsers.map((u) => [u.id, u])) as Record<
-      string,
-      { username: string }
-    >,
+    () =>
+      Object.fromEntries(teamUsers.map((u) => [u.id, u])) as Record<
+        string,
+        ResponseUserDto
+      >,
     [teamUsers],
   );
 
   const resolveInitials = useCallback(
-    (id: string) =>
-      userById[id]?.username?.slice(0, 2).toUpperCase() ??
-      id.slice(0, 2).toUpperCase(),
+    (id: string) => {
+      const u = userById[id];
+      if (u) return userInitials(u);
+      return id.slice(0, 2).toUpperCase();
+    },
     [userById],
   );
 
@@ -198,11 +184,6 @@ export function KanbanPage() {
     ],
   );
 
-  const handleLogout = async () => {
-    await logout();
-    toast.success(t("board.logoutToast"));
-  };
-
   const handleClearFilters = () => {
     setDeadlinePreset("all");
     setSearchQuery("");
@@ -214,135 +195,112 @@ export function KanbanPage() {
     setSelectedDay(null);
   };
 
-  const scrollToMiniCalendar = () => {
-    document.getElementById("dashboard-mini-calendar")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
   const handleTaskClick = (task: ResponseTaskDto) => {
     setSelectedTaskId(task.id);
+  };
+
+  const handleManualRefresh = () => {
+    void queryClient.invalidateQueries({ queryKey: [TASKS_QUERY_ROOT] });
   };
 
   const showNewTask = (user?.role ?? "USER") !== "USER";
 
   const managerRole = canManageAssignments(user?.role);
 
-  return (
-    <div className="flex min-h-screen flex-col bg-muted/25">
-      <div className="flex min-h-0 flex-1">
-        <DashboardSidebar
-          showInvite={isAdminRole(user?.role)}
-          showAnalyticsNav={managerRole}
-          showArchiveNav={managerRole}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <DashboardHeader
-            isConnected={isConnected}
-            user={user}
-            layoutMode="kanban"
-            onLayoutMode={() => {}}
-            onLogout={handleLogout}
-            showLayoutToggle={false}
-          />
-          <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1700px] space-y-4 p-4 pb-10 lg:space-y-5 lg:p-6">
-              {filtersDirty ? (
-                <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 shrink-0 shadow-sm"
-                    onClick={handleClearFilters}
-                  >
-                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                    {t("dashboard.clearFilters")}
-                  </Button>
-                  <p className="max-w-xl text-right text-xs text-muted-foreground">
-                    {t("dashboard.filtersActiveHint")}
-                  </p>
-                </div>
-              ) : null}
-              <DashboardToolbar
-                showNewTask={showNewTask}
-                onNewTask={() => setCreateDialogOpen(true)}
-                sortMode={sortMode}
-                onSortMode={setSortMode}
-                deadlineFrom={deadlineFrom}
-                deadlineTo={deadlineTo}
-                onDeadlineFrom={setDeadlineFrom}
-                onDeadlineTo={setDeadlineTo}
-                selectedStatuses={selectedStatuses}
-                onToggleStatus={(s) =>
-                  setSelectedStatuses((prev) =>
-                    prev.includes(s)
-                      ? prev.filter((x) => x !== s)
-                      : [...prev, s],
-                  )
-                }
-                selectedPriorities={selectedPriorities}
-                onTogglePriority={(p) =>
-                  setSelectedPriorities((prev) =>
-                    prev.includes(p)
-                      ? prev.filter((x) => x !== p)
-                      : [...prev, p],
-                  )
-                }
-                assigneeId={assigneeId}
-                onAssigneeId={setAssigneeId}
-                assigneeOptions={assigneeOptions}
-                onClearFilters={handleClearFilters}
-                searchQuery={searchQuery}
-                onSearchQuery={setSearchQuery}
-                deadlinePreset={deadlinePreset}
-                onDeadlinePreset={setDeadlinePreset}
-                showAssigneeFilter={managerRole}
-                showAssignedToMePreset={managerRole}
-              />
+  const body = (
+    <div className="mx-auto max-w-[1700px] space-y-4 p-4 pb-10 lg:space-y-5 lg:p-6">
+      {filtersDirty ? (
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 shadow-sm"
+            onClick={handleClearFilters}
+          >
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+            {t("dashboard.clearFilters")}
+          </Button>
+          <p className="max-w-xl text-right text-xs text-muted-foreground">
+            {t("dashboard.filtersActiveHint")}
+          </p>
+        </div>
+      ) : null}
+      <DashboardToolbar
+        hideToolbarSearch
+        onManualRefresh={handleManualRefresh}
+        isRefreshing={isFetching || isLoading}
+        showNewTask={showNewTask}
+        onNewTask={() => setCreateDialogOpen(true)}
+        sortMode={sortMode}
+        onSortMode={setSortMode}
+        deadlineFrom={deadlineFrom}
+        deadlineTo={deadlineTo}
+        onDeadlineFrom={setDeadlineFrom}
+        onDeadlineTo={setDeadlineTo}
+        selectedStatuses={selectedStatuses}
+        onToggleStatus={(s) =>
+          setSelectedStatuses((prev) =>
+            prev.includes(s)
+              ? prev.filter((x) => x !== s)
+              : [...prev, s],
+          )
+        }
+        selectedPriorities={selectedPriorities}
+        onTogglePriority={(p) =>
+          setSelectedPriorities((prev) =>
+            prev.includes(p)
+              ? prev.filter((x) => x !== p)
+              : [...prev, p],
+          )
+        }
+        assigneeId={assigneeId}
+        onAssigneeId={setAssigneeId}
+        assigneeOptions={assigneeOptions}
+        onClearFilters={handleClearFilters}
+        searchQuery={searchQuery}
+        onSearchQuery={setSearchQuery}
+        deadlinePreset={deadlinePreset}
+        onDeadlinePreset={setDeadlinePreset}
+        showAssigneeFilter={managerRole}
+        showAssignedToMePreset={managerRole}
+      />
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-stretch xl:min-h-[calc(100vh-11rem)]">
-                <div className="flex min-h-0 min-w-0 flex-col gap-4">
-                  <div
-                    id="dashboard-board"
-                    className="flex min-h-0 flex-1 flex-col xl:min-h-[min(52vh,560px)]"
-                  >
-                    <KanbanBoard
-                      className="min-h-0 flex-1"
-                      tasks={boardTasks}
-                      isLoading={isLoading}
-                      onTaskClick={handleTaskClick}
-                      viewerId={user?.id}
-                      viewerRole={user?.role}
-                    />
-                  </div>
-                </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-stretch xl:min-h-[calc(100vh-11rem)]">
+        <div className="flex min-h-0 min-w-0 flex-col gap-4">
+          <div
+            id="dashboard-board"
+            className="flex min-h-0 flex-1 flex-col xl:min-h-[min(52vh,560px)]"
+          >
+            <KanbanBoard
+              className="min-h-0 flex-1"
+              tasks={boardTasks}
+              isLoading={isLoading}
+              onTaskClick={handleTaskClick}
+              viewerId={user?.id}
+              viewerRole={user?.role}
+            />
+          </div>
+        </div>
 
-                <div className="flex min-h-0 flex-col gap-4 xl:self-stretch">
-                  <div className="flex flex-col gap-4 xl:sticky xl:top-4">
-                    <MiniCalendar
-                      visibleMonth={visibleMonth}
-                      onMonthChange={(m) => setVisibleMonth(startOfMonth(m))}
-                      selectedDay={selectedDay}
-                      onSelectDay={(d) => applySelectedDay(d)}
-                      tasks={filteredTasks}
-                    />
-                    <DailyPlanPanel
-                      selectedDay={selectedDay}
-                      allTasks={filteredTasks}
-                      onTaskClick={handleTaskClick}
-                      onOpenCalendar={scrollToMiniCalendar}
-                      resolveInitials={resolveInitials}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="flex min-h-0 flex-col gap-4 xl:self-stretch">
+          <div className="flex flex-col gap-4 xl:sticky xl:top-4">
+            <MiniCalendar
+              visibleMonth={visibleMonth}
+              onMonthChange={(m) => setVisibleMonth(startOfMonth(m))}
+              selectedDay={selectedDay}
+              onSelectDay={(d) => applySelectedDay(d)}
+              tasks={filteredTasks}
+            />
+            <DailyPlanPanel
+              selectedDay={selectedDay}
+              allTasks={filteredTasks}
+              onTaskClick={handleTaskClick}
+              resolveInitials={resolveInitials}
+            />
           </div>
         </div>
       </div>
-
       <CreateTaskDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
@@ -354,5 +312,16 @@ export function KanbanPage() {
         onOpenChange={(open) => !open && setSelectedTaskId(null)}
       />
     </div>
+  );
+
+  return (
+    <AuthenticatedShell
+      headerTitleKey="dashboard.kanbanPageTitle"
+      globalSearchPlaceholderKey="dashboard.globalSearchPlaceholder"
+      globalSearchValue={searchQuery}
+      onGlobalSearchChange={setSearchQuery}
+    >
+      {body}
+    </AuthenticatedShell>
   );
 }

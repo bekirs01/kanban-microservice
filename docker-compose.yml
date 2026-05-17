@@ -12,11 +12,15 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - VITE_API_URL=http://localhost:3001
+      - VITE_API_URL=
+      - VITE_DEV_PROXY_TARGET=http://api-gateway:3001
       - VITE_WEBSOCKET_URL=http://localhost:3004
     networks:
       - challenge-network
     command: npm run dev --workspace=@challenge/web -- --host 0.0.0.0 --port 3000
+    depends_on:
+      api-gateway:
+        condition: service_healthy
 
   # -----------------------------------------------------------------------------
   # API GATEWAY (HTTP REST)
@@ -74,6 +78,7 @@ services:
       - TCP_PORT=3002
       - HTTP_PORT=3012
       - JWT_SECRET=jungle_super_secret_key_123
+      - JWT_REFRESH_SECRET=jungle_super_secret_key_123
       - RABBITMQ_URI=amqp://admin:admin@rabbitmq:5672
       - DB_HOST=db
       - DB_PORT=5432
@@ -193,7 +198,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 25s
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -211,7 +217,8 @@ services:
       test: rabbitmq-diagnostics -q ping
       interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 10
+      start_period: 40s
 
 volumes:
   postgres_data:

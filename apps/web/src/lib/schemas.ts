@@ -1,4 +1,5 @@
 import type { TranslateFn } from "@/i18n/types";
+import { UserRole } from "@challenge/types/enums";
 import { z } from "zod";
 
 export function buildLoginSchema(t: TranslateFn) {
@@ -13,7 +14,7 @@ export function buildSignupRequestSchema(t: TranslateFn) {
     username: z.string().min(3, t("validation.usernameMin")),
     email: z.string().email(t("validation.emailInvalid")),
     password: z.string().min(6, t("validation.passwordMin")),
-    requestedRole: z.union([z.literal("USER"), z.literal("MANAGER")]),
+    requestedRole: z.literal(UserRole.USER),
   });
 }
 

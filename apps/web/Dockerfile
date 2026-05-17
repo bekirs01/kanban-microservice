@@ -1,10 +1,11 @@
+# syntax=docker/dockerfile:1
 FROM node:20-alpine AS development
 
 WORKDIR /app
 
 COPY package*.json turbo.json ./
 
-COPY . .
+COPY --exclude=node_modules --exclude=apps/*/node_modules --exclude=packages/*/node_modules . .
 
 RUN npm install
 

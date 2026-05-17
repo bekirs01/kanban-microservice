@@ -64,6 +64,9 @@ export function useWebSocket() {
         .invalidateQueries({ predicate: isTaskRelatedQuery })
         .then(() => {
           void queryClient.invalidateQueries({ queryKey: ["usersByIds"] });
+          void queryClient.invalidateQueries({ queryKey: ["workersDirectory"] });
+          void queryClient.invalidateQueries({ queryKey: ["profileMine"] });
+          void queryClient.invalidateQueries({ queryKey: ["workerProfile"] });
           void queryClient.refetchQueries({
             type: "active",
             predicate: isTaskRelatedQuery,
@@ -162,6 +165,10 @@ export function useWebSocket() {
     );
 
     socketRef.current.on("board:changed", () => {
+      scheduleBoardSync();
+    });
+
+    socketRef.current.on("profile:updated", () => {
       scheduleBoardSync();
     });
 

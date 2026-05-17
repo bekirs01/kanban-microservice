@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +14,7 @@ import { isTaskOverdue } from "@/lib/dashboardDerived";
 import { useUpdateTask } from "@/hooks/useTasks";
 import { useUsersByIds } from "@/hooks/useUsersByIds";
 import { cn } from "@/lib/utils";
+import { displayUsername, userInitials } from "@/lib/userDisplay";
 import type { ResponseTaskDto, ResponseUserDto, TaskStatus } from "@challenge/types";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import {
@@ -385,15 +386,18 @@ function AssigneesStack({ ids, compact }: { ids: string[]; compact?: boolean }) 
           <Tooltip key={user.id}>
             <TooltipTrigger asChild>
               <Avatar className={`${avatarClass} cursor-default`}>
+                {user.avatarData ? (
+                  <AvatarImage src={user.avatarData} alt="" />
+                ) : null}
                 <AvatarFallback
                   className={`${fallbackTextClass} font-bold bg-muted text-muted-foreground`}
                 >
-                  {user.username.slice(0, 2).toUpperCase()}
+                  {userInitials(user)}
                 </AvatarFallback>
               </Avatar>
             </TooltipTrigger>
             <TooltipContent>
-              <p className="text-xs">{user.username}</p>
+              <p className="text-xs">{displayUsername(user)}</p>
             </TooltipContent>
           </Tooltip>
         ))}

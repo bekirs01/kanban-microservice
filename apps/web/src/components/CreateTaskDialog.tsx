@@ -21,18 +21,20 @@ import { buildCreateTaskSchema, type CreateTaskFormData } from "@/lib/schemas";
 import { useCreateTask } from "@/hooks/useTasks";
 import type { CreateTaskDto, TaskPriority } from "@challenge/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialDeadlineISO?: string;
 }
 
 export function CreateTaskDialog({
   open,
   onOpenChange,
+  initialDeadlineISO,
 }: CreateTaskDialogProps) {
   const { t } = useTranslation();
   const createTask = useCreateTask();
@@ -48,6 +50,19 @@ export function CreateTaskDialog({
   } = useForm<CreateTaskFormData>({
     resolver: zodResolver(schema),
   });
+
+  useEffect(() => {
+    if (!open || !initialDeadlineISO) {
+      return;
+    }
+    const d = new Date(initialDeadlineISO);
+    if (Number.isNaN(d.getTime())) {
+      return;
+    }
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setValue("deadline", local, { shouldValidate: true });
+  }, [initialDeadlineISO, open, setValue]);
 
   const onSubmit = async (data: CreateTaskFormData) => {
     try {

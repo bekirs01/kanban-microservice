@@ -27,8 +27,8 @@ export class RegistrationService {
     @Inject("NOTIFICATION_SERVICE") private readonly notificationClient: ClientProxy,
   ) { }
 
-  private normalizeRequestedRole(role: SubmitRegistrationRpcPayload["requestedRole"]): UserRole.USER | UserRole.MANAGER {
-    return role === UserRole.MANAGER ? UserRole.MANAGER : UserRole.USER;
+  private normalizeRequestedRole(_role: SubmitRegistrationRpcPayload["requestedRole"]): UserRole.USER {
+    return UserRole.USER;
   }
 
   async submit(payload: SubmitRegistrationRpcPayload): Promise<{ requestId: string }> {
@@ -118,7 +118,7 @@ export class RegistrationService {
       throw new UserAlreadyExistsException();
     }
 
-    const role = this.normalizeRequestedRole(pending.requestedRole as UserRole.USER | UserRole.MANAGER);
+    const role = this.normalizeRequestedRole(pending.requestedRole as SubmitRegistrationRpcPayload["requestedRole"]);
 
     await this.regRepo.manager.transaction(async (trx) => {
       const uRepo = trx.getRepository(User);

@@ -1,13 +1,7 @@
-
-import { UserRole } from '../../enums';
+import type { ResponseUserDto } from "../user/response-user.dto";
 
 export class ResponseAuthDto {
-  accessToken: string;
-  refreshToken: string;
-  user: {
-    id: string,
-    username: string,
-    email: string,
-    role: UserRole,
-  }
+  accessToken!: string;
+  refreshToken!: string;
+  user!: ResponseUserDto;
 }

@@ -4,6 +4,13 @@ import { dataSourceOptions } from 'db/datasource';
 import { LoggerModule } from 'nestjs-pino';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthModule } from './health/health.module';
+import { Notification } from './notifications/entity/notification.entity';
+
+const {
+  entities: _entitiesGlob,
+  migrations: _migrationsGlob,
+  ...typeOrmRuntimeOptions
+} = dataSourceOptions;
 
 @Module({
   imports: [
@@ -12,7 +19,13 @@ import { HealthModule } from './health/health.module';
         transport: process.env.NODE_ENV !== "production" ? { target: "pino-pretty" } : undefined
       }
     }),
-    TypeOrmModule.forRoot(dataSourceOptions), NotificationsModule, HealthModule],
+    TypeOrmModule.forRoot({
+      ...typeOrmRuntimeOptions,
+      entities: [Notification],
+    }),
+    NotificationsModule,
+    HealthModule,
+  ],
   controllers: [],
   providers: [],
 })

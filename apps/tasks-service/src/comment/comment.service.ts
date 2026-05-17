@@ -16,14 +16,14 @@ export class CommentService {
   ) { }
 
   private normalizeRole(role?: string): UserRole {
-    if (role === UserRole.ADMIN || role === UserRole.MANAGER || role === UserRole.USER) {
+    if (role === UserRole.ADMIN || role === UserRole.USER) {
       return role;
     }
     return UserRole.USER;
   }
 
   private isElevated(role: UserRole): boolean {
-    return role === UserRole.ADMIN || role === UserRole.MANAGER;
+    return role === UserRole.ADMIN;
   }
 
   private canParticipate(task: Task, userId: string): boolean {

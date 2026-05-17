@@ -1,4 +1,5 @@
 import { UserAlreadyExistsException, UserNotFoundException } from '@challenge/exceptions';
+import { UserRole } from '@challenge/types';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -18,9 +19,19 @@ describe('UserService', () => {
     save: jest.fn(),
     preload: jest.fn(),
     find: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
+  const qbGetOneRef = () => ({
+    where: jest.fn().mockReturnThis(),
+    orWhere: jest.fn().mockReturnThis(),
+    getOne: jest.fn(),
+  });
+
+  let mockQbChain: ReturnType<typeof qbGetOneRef>;
+
   beforeEach(async () => {
+    mockQbChain = qbGetOneRef();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
@@ -28,11 +39,20 @@ describe('UserService', () => {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
         },
+        {
+          provide: "NOTIFICATION_SERVICE",
+          useValue: {
+            emit: jest.fn(),
+            send: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     userService = module.get<UserService>(UserService);
     userRepository = module.get<Repository<User>>(getRepositoryToken(User));
+
+    mockUserRepository.createQueryBuilder.mockReturnValue(mockQbChain);
   });
 
   afterEach(() => {
@@ -53,18 +73,21 @@ describe('UserService', () => {
     };
 
     it('deve retornar um usuário quando encontrado', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockQbChain.getOne.mockResolvedValue(mockUser);
 
       const result = await userService.getByEmail(email);
 
       expect(result).toEqual(mockUser);
-      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
-        where: { email },
-      });
+      expect(mockUserRepository.createQueryBuilder).toHaveBeenCalledWith('u');
+      expect(mockQbChain.where).toHaveBeenCalledWith(
+        'LOWER(u.email) = LOWER(:e)',
+        { e: email },
+      );
+      expect(mockQbChain.getOne).toHaveBeenCalled();
     });
 
     it('deve lançar UserNotFoundException quando usuário não encontrado', async () => {
-      mockUserRepository.findOne.mockResolvedValue(null);
+      mockQbChain.getOne.mockResolvedValue(null);
 
       await expect(userService.getByEmail(email)).rejects.toThrow(
         UserNotFoundException,
@@ -170,29 +193,31 @@ describe('UserService', () => {
     };
 
     it('deve criar um novo usuário com sucesso', async () => {
-      mockUserRepository.findOne.mockResolvedValue(null);
+      mockQbChain.getOne.mockResolvedValue(null);
       mockUserRepository.save.mockResolvedValue(mockSavedUser);
       (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
 
       const result = await userService.create(registerPayload);
 
       expect(result).toEqual(mockSavedUser);
-      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
-        where: [
-          { email: registerPayload.email },
-          { username: registerPayload.username },
-        ],
+      expect(mockUserRepository.createQueryBuilder).toHaveBeenCalledWith('u');
+      expect(mockQbChain.where).toHaveBeenCalledWith('LOWER(u.email) = :e', {
+        e: 'novo@jungle.com',
+      });
+      expect(mockQbChain.orWhere).toHaveBeenCalledWith('u.username = :un', {
+        un: 'novousuario',
       });
       expect(bcrypt.hash).toHaveBeenCalledWith(registerPayload.password, 10);
       expect(mockUserRepository.save).toHaveBeenCalledWith({
-        username: registerPayload.username,
-        email: registerPayload.email,
+        username: 'novousuario',
+        email: 'novo@jungle.com',
         passwordHash: 'hashed-password',
+        role: UserRole.USER,
       });
     });
 
     it('deve lançar UserAlreadyExistsException quando usuário já existe', async () => {
-      mockUserRepository.findOne.mockResolvedValue({
+      mockQbChain.getOne.mockResolvedValue({
         id: 'existing-id',
         email: registerPayload.email,
       });
@@ -229,23 +254,19 @@ describe('UserService', () => {
     });
 
     it('deve atualizar usuário com refreshTokenHash', async () => {
-      const updateDto = { refreshTokenHash: 'new-refresh-token' };
+      const updateDto = { refreshTokenHash: 'stored-refresh-hash' };
       const updatedUser = {
         ...mockUser,
-        refreshTokenHash: 'new-hashed-refresh-token',
+        refreshTokenHash: 'stored-refresh-hash',
       };
 
       mockUserRepository.preload.mockResolvedValue(mockUser);
       mockUserRepository.save.mockResolvedValue(updatedUser);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-refresh-token');
 
       const result = await userService.update(userId, updateDto);
 
       expect(result).toEqual(updatedUser);
-      expect(bcrypt.hash).toHaveBeenCalledWith(
-        updateDto.refreshTokenHash,
-        10,
-      );
+      expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(mockUserRepository.save).toHaveBeenCalled();
     });
 
@@ -306,10 +327,15 @@ describe('UserService', () => {
 
       const result = await userService.getManyByIds(ids);
 
-      expect(result).toEqual(mockUsers);
+      expect(result).toEqual(
+        mockUsers.map((u) =>
+          userService.toResponseDto({
+            ...(u as User),
+          }),
+        ),
+      );
       expect(mockUserRepository.find).toHaveBeenCalledWith({
         where: { id: expect.anything() },
-        select: ['id', 'username', 'email'],
       });
     });
 
@@ -339,9 +365,15 @@ describe('UserService', () => {
 
       const result = await userService.getAllSimple();
 
-      expect(result).toEqual(mockUsers);
+      expect(result).toEqual(
+        mockUsers.map((u) =>
+          userService.toResponseDto({
+            ...(u as User),
+          }),
+        ),
+      );
       expect(mockUserRepository.find).toHaveBeenCalledWith({
-        select: ['id', 'username', 'email'],
+        order: { username: 'ASC' },
       });
     });
   });

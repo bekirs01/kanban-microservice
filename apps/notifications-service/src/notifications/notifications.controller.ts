@@ -39,4 +39,10 @@ export class NotificationsController {
   async registrationPending(@Payload() data: RegistrationPendingNotificationPayload) {
     await this.service.notifyRegistrationPending(data);
   }
+
+  @EventPattern("user.profile.updated")
+  async handleProfileUpdated(@Payload() data: { userId: string }) {
+    await this.service.notifyProfileBroadcast(data);
+  }
+
 }

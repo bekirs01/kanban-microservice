@@ -16,7 +16,7 @@ import {
 import { useTranslation } from "@/i18n/useTranslation";
 import type { QuickTaskFilter, TaskSortMode } from "@/lib/dashboardDerived";
 import type { TaskPriority, TaskStatus } from "@challenge/types";
-import { Filter, Plus, RotateCcw, Search } from "lucide-react";
+import { Filter, Plus, RefreshCw, RotateCcw, Search } from "lucide-react";
 
 const STATUSES = ["TODO", "IN_PROGRESS", "REVIEW", "DONE"] as TaskStatus[];
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as TaskPriority[];
@@ -27,6 +27,9 @@ export interface AssigneeOption {
 }
 
 interface DashboardToolbarProps {
+  hideToolbarSearch?: boolean;
+  onManualRefresh?: () => void;
+  isRefreshing?: boolean;
   showNewTask: boolean;
   onNewTask: () => void;
   sortMode: TaskSortMode;
@@ -52,6 +55,9 @@ interface DashboardToolbarProps {
 }
 
 export function DashboardToolbar({
+  hideToolbarSearch = false,
+  onManualRefresh,
+  isRefreshing = false,
   showNewTask,
   onNewTask,
   sortMode,
@@ -110,6 +116,7 @@ export function DashboardToolbar({
           </Button>
         ) : null}
 
+{!hideToolbarSearch ? (
         <div className="relative min-w-[10rem] flex-1 sm:max-w-xs lg:max-w-sm">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -120,6 +127,23 @@ export function DashboardToolbar({
             aria-label={t("dashboard.searchPlaceholder")}
           />
         </div>
+        ) : null}
+
+        {onManualRefresh ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            disabled={isRefreshing}
+            onClick={() => {
+              onManualRefresh();
+            }}
+          >
+            <RefreshCw className="mr-1.5 h-4 w-4" />
+            {t("dashboard.refresh")}
+          </Button>
+        ) : null}
 
         <Popover>
           <PopoverTrigger asChild>

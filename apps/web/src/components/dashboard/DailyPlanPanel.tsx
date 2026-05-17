@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from "@/i18n/useTranslation";
 import {
@@ -24,7 +23,6 @@ interface DailyPlanPanelProps {
   selectedDay: Date | null;
   allTasks: ResponseTaskDto[];
   onTaskClick: (task: ResponseTaskDto) => void;
-  onOpenCalendar: () => void;
   resolveInitials: (userId: string) => string;
 }
 
@@ -43,7 +41,6 @@ export function DailyPlanPanel({
   selectedDay,
   allTasks,
   onTaskClick,
-  onOpenCalendar,
   resolveInitials,
 }: DailyPlanPanelProps) {
   const { t, dateFnsLocale } = useTranslation();
@@ -155,17 +152,6 @@ export function DailyPlanPanel({
           </div>
         </div>
       </ScrollArea>
-      <div className="border-t p-3">
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full shadow-sm"
-          size="sm"
-          onClick={onOpenCalendar}
-        >
-          {t("dashboard.openCalendar")}
-        </Button>
-      </div>
     </div>
   );
 }

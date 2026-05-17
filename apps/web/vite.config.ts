@@ -9,6 +9,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@challenge/types/enums": path.resolve(
+        __dirname,
+        "../../packages/types/enums/index.ts",
+      ),
     },
   },
   preview: {

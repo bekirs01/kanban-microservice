@@ -17,13 +17,13 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Usuários retornados.' })
   async getManyByIds(@Req() req: any, @Query('ids') idsParam: string) {
     const role = normalizeRequesterRole(req.user?.role);
-    if (!isBoardElevated(role)) throw new ForbiddenException();
 
     const ids = (idsParam ?? '')
       .split(',')
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
     if (!ids.length) {
+      if (!isBoardElevated(role)) throw new ForbiddenException();
       return this.authClient.send('users.getAll', {});
     }
     return this.authClient.send('users.getManyByIds', { ids });

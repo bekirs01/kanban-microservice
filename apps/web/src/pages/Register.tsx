@@ -1,13 +1,11 @@
+import { messageForRegistrationFailure } from "@/lib/authErrors";
 import { useTranslation } from "@/i18n/useTranslation";
 import { useAuth } from "@/hooks/useAuth";
-import type { SubmitRegistrationRequestDto } from "@challenge/types";
+import { UserRole } from "@challenge/types/enums";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { AxiosError } from "axios";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-type SignupSelectableRole = SubmitRegistrationRequestDto["requestedRole"];
 
 export function Register() {
   const { t } = useTranslation();
@@ -15,8 +13,6 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [requestedRole, setRequestedRole] =
-    useState<SignupSelectableRole>("USER" as SubmitRegistrationRequestDto["requestedRole"]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { submitRegistrationRequest } = useAuth();
@@ -48,15 +44,12 @@ export function Register() {
         username: username.trim(),
         email: email.trim(),
         password,
-        requestedRole,
+        requestedRole: UserRole.USER,
       });
       toast.success(t("auth.registrationSubmitted"));
       navigate({ to: "/login" });
     } catch (err) {
-      const error = err as AxiosError<{ message?: string }>;
-      setError(
-        error.response?.data?.message ?? t("auth.registerFailureFallback"),
-      );
+      setError(messageForRegistrationFailure(err, t));
     } finally {
       setIsLoading(false);
     }
@@ -155,25 +148,6 @@ export function Register() {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="requested-role"
-                className="block text-sm font-medium text-gray-700"
-              >
-                {t("auth.requestedRoleLabel")}
-              </label>
-              <select
-                id="requested-role"
-                value={requestedRole}
-                onChange={(e) =>
-                  setRequestedRole(e.target.value as SignupSelectableRole)
-                }
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-              >
-                <option value="USER">{t("admin.role.user")}</option>
-                <option value="MANAGER">{t("admin.role.manager")}</option>
-              </select>
-            </div>
           </div>
 
           <div>

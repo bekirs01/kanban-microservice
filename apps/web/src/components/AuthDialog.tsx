@@ -8,34 +8,24 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useTranslation } from "@/i18n/useTranslation";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  messageForLoginFailure,
+  messageForRegistrationFailure,
+} from "@/lib/authErrors";
 import {
   buildLoginSchema,
   buildSignupRequestSchema,
   type LoginFormData,
   type SignupRequestFormData,
 } from "@/lib/schemas";
-import type { SubmitRegistrationRequestDto } from "@challenge/types";
+import { UserRole } from "@challenge/types/enums";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-
-const SIGNUP_ROLE_OPTIONS = ["USER", "MANAGER"] as const;
-
-const ROLE_TRANSLATION_KEYS: Record<(typeof SIGNUP_ROLE_OPTIONS)[number], string> = {
-  MANAGER: "admin.role.manager",
-  USER: "admin.role.user",
-};
 
 interface AuthDialogProps {
   open: boolean;
@@ -68,7 +58,6 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   });
 
   const {
-    control: signupControl,
     register: registerSignupForm,
     handleSubmit: handleSignupSubmitForm,
     formState: {
@@ -82,7 +71,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       username: "",
       email: "",
       password: "",
-      requestedRole: "USER",
+      requestedRole: UserRole.USER,
     },
   });
 
@@ -93,13 +82,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       onOpenChange(false);
       resetLogin();
     } catch (error: unknown) {
-      const msg =
-        typeof (error as { response?: { data?: { message?: string } } })
-          ?.response?.data?.message === "string"
-          ? (error as { response: { data: { message: string } } }).response.data
-              .message
-          : t("auth.loginErrorFallback");
-      toast.error(msg);
+      toast.error(messageForLoginFailure(error, t));
     }
   };
 
@@ -109,21 +92,14 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         username: data.username,
         email: data.email,
         password: data.password,
-        requestedRole:
-          data.requestedRole as SubmitRegistrationRequestDto["requestedRole"],
+        requestedRole: data.requestedRole,
       });
       toast.success(t("auth.registrationSubmitted"));
       onOpenChange(false);
       resetSignup();
       navigate({ to: "/login" });
     } catch (error: unknown) {
-      const msg =
-        typeof (error as { response?: { data?: { message?: string } } })
-          ?.response?.data?.message === "string"
-          ? (error as { response: { data: { message: string } } }).response.data
-              .message
-          : t("auth.registerErrorFallback");
-      toast.error(msg);
+      toast.error(messageForRegistrationFailure(error, t));
     }
   };
 
@@ -248,33 +224,6 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               {signupErrors.password && (
                 <p className="text-sm text-destructive">
                   {signupErrors.password.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("auth.requestedRoleLabel")}</Label>
-              <Controller
-                name="requestedRole"
-                control={signupControl}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="w-full bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SIGNUP_ROLE_OPTIONS.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {t(ROLE_TRANSLATION_KEYS[role])}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {signupErrors.requestedRole && (
-                <p className="text-sm text-destructive">
-                  {signupErrors.requestedRole.message}
                 </p>
               )}
             </div>

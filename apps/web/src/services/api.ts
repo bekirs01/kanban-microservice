@@ -1,14 +1,25 @@
 import { queryClient } from '@/providers/QueryProvider';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+function normalizeApiOrigin(envValue: unknown): string {
+  if (typeof envValue !== "string") {
+    return "";
+  }
+  return envValue.trim().replace(/\/+$/, "");
+}
+
+const API_ORIGIN = normalizeApiOrigin(import.meta.env.VITE_API_URL);
 
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_ORIGIN,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+function refreshTokenUrl(): string {
+  return API_ORIGIN === "" ? "/api/auth/refresh" : `${API_ORIGIN}/api/auth/refresh`;
+}
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -85,7 +96,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const response = await axios.post(`${API_URL}/api/auth/refresh`, {
+        const response = await axios.post(refreshTokenUrl(), {
           refreshToken,
         });
 

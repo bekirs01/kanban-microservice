@@ -12,12 +12,12 @@ export function canDragTaskOnBoard(
   if (r === "USER") {
     return (task.assignees ?? []).includes(userId);
   }
-  return r === "ADMIN" || r === "MANAGER";
+  return r === "ADMIN";
 }
 
 export function canManageAssignments(role: Role | undefined): boolean {
   const r = role ?? "USER";
-  return r === "ADMIN" || r === "MANAGER";
+  return r === "ADMIN";
 }
 
 export function isAdminRole(role: Role | undefined): boolean {

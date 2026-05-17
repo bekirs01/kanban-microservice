@@ -1,7 +1,7 @@
 import type {
   LoginAuthDto,
-  SubmitRegistrationRequestDto,
   ResponseAuthDto,
+  SubmitRegistrationRequestDto,
 } from "@challenge/types";
 import {
   createRootRouteWithContext,
@@ -10,12 +10,13 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
-import { canManageAssignments } from "./lib/rbac";
 import { AdminPage } from "./pages/AdminPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { ArchivePage } from "./pages/ArchivePage";
+import { CalendarPage } from "./pages/CalendarPage";
 import { KanbanPage } from "./pages/KanbanPage";
 import { Login } from "./pages/Login";
+import { ProfilePage } from "./pages/ProfilePage";
 import { Register } from "./pages/Register";
 
 type User = ResponseAuthDto["user"];
@@ -29,6 +30,7 @@ interface AuthContext {
     dto: SubmitRegistrationRequestDto,
   ) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 interface RouterContext {
@@ -84,9 +86,6 @@ const analyticsRoute = createRoute({
     if (!context.auth.isAuthenticated) {
       throw redirect({ to: "/login" });
     }
-    if (!canManageAssignments(context.auth.user?.role)) {
-      throw redirect({ to: "/kanban" });
-    }
   },
 });
 
@@ -98,8 +97,78 @@ const archiveRoute = createRoute({
     if (!context.auth.isAuthenticated) {
       throw redirect({ to: "/login" });
     }
-    if (!canManageAssignments(context.auth.user?.role)) {
-      throw redirect({ to: "/kanban" });
+  },
+});
+
+const calendarRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/calendar",
+  component: CalendarPage,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+  },
+});
+
+const automationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/automations",
+  component: () => null,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    throw redirect({ to: "/kanban" });
+  },
+});
+
+const queueRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/queue",
+  component: () => null,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    throw redirect({ to: "/kanban" });
+  },
+});
+
+const workersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workers",
+  component: () => null,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    throw redirect({ to: "/kanban" });
+  },
+});
+
+const workerDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workers/$workerId",
+  component: () => null,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    throw redirect({ to: "/kanban" });
+  },
+});
+
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/profile",
+  component: ProfilePage,
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: "/login" });
+    }
+    if (context.auth.user?.role === "ADMIN") {
+      throw redirect({ to: "/admin" });
     }
   },
 });
@@ -138,6 +207,12 @@ const routeTree = rootRoute.addChildren([
   kanbanRoute,
   analyticsRoute,
   archiveRoute,
+  calendarRoute,
+  automationsRoute,
+  queueRoute,
+  workersRoute,
+  workerDetailRoute,
+  profileRoute,
   adminRoute,
 ]);
 
@@ -151,6 +226,7 @@ export const router = createRouter({
       login: async () => {},
       submitRegistrationRequest: async () => {},
       logout: async () => {},
+      refreshProfile: async () => {},
     },
   },
 });

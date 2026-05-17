@@ -8,11 +8,12 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { queryClient } from "../providers/QueryProvider";
 import { authService } from "../services/auth.service";
+import { fetchMyProfile } from "../services/profile.service";
 import { submitRegistrationRequestApi } from "../services/registration-request.service";
 import { AuthContext } from "./auth-context";
 
 function isApiUserRole(raw: unknown): raw is UserRole {
-  return raw === "USER" || raw === "MANAGER" || raw === "ADMIN";
+  return raw === "USER" || raw === "ADMIN";
 }
 
 interface AuthProviderProps {
@@ -67,6 +68,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
   };
 
+  const refreshProfile = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    try {
+      const next = await fetchMyProfile();
+      setUser(next);
+      localStorage.setItem("user", JSON.stringify(next));
+    } catch {
+      /* keep existing cached user */
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -76,6 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         login,
         submitRegistrationRequest,
         logout,
+        refreshProfile,
       }}
     >
       {children}

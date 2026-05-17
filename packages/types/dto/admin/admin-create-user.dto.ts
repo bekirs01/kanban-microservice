@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsEnum, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsEmail, IsEnum, IsIn, IsNotEmpty, IsString, MinLength } from "class-validator";
 import { UserRole } from "../../enums";
 
 export class AdminCreateUserDto {
@@ -19,9 +19,10 @@ export class AdminCreateUserDto {
   @MinLength(8)
   password!: string;
 
-  @ApiProperty({ enum: UserRole })
+  @ApiProperty({ enum: [UserRole.ADMIN, UserRole.USER] })
   @IsEnum(UserRole)
-  role!: UserRole;
+  @IsIn([UserRole.ADMIN, UserRole.USER])
+  role!: UserRole.ADMIN | UserRole.USER;
 }
 
 export interface AdminCreateUserRpcPayload extends AdminCreateUserDto {

@@ -5,8 +5,10 @@ import { AdminModule } from './admin/admin.module';
 import { LoggerModule } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
+import { ProfileModule } from './profile/profile.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
+import { WorkersModule } from './workers/workers.module';
 
 @Module({
   imports: [
@@ -18,7 +20,7 @@ import { UsersModule } from './users/users.module';
     ThrottlerModule.forRoot({
       errorMessage: "Muitas requisições num curto período. Tente novamente em alguns instantes.",
       throttlers: [{ limit: 10, ttl: 1000 }]
-    }), TasksModule, AuthModule, UsersModule, AdminModule, HealthModule],
+    }), TasksModule, AuthModule, UsersModule, ProfileModule, WorkersModule, AdminModule, HealthModule],
   controllers: [],
   providers: [{
     provide: APP_GUARD,

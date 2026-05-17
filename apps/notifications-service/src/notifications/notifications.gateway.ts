@@ -1,4 +1,9 @@
-import type { KanbanBoardChangeDto, ResponseNotificationDto, TaskMovedSocketDto } from '@challenge/types';
+import type {
+  KanbanBoardChangeDto,
+  ResponseNotificationDto,
+  TaskMovedSocketDto,
+  UserProfileUpdatedPayload,
+} from '@challenge/types';
 import { JwtService } from '@nestjs/jwt';
 import { OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Logger } from 'nestjs-pino';
@@ -60,5 +65,9 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   emitTaskMoved(payload: TaskMovedSocketDto) {
     this.server.emit('task:moved', payload);
+  }
+
+  emitProfileDirectoryChanged(payload: UserProfileUpdatedPayload) {
+    this.server.emit('profile:updated', payload);
   }
 }

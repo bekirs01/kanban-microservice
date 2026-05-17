@@ -86,6 +86,21 @@ export function isTaskOverdue(
   );
 }
 
+export function countCreatedToday(
+  tasks: ResponseTaskDto[],
+  ref: Date = new Date(),
+): number {
+  const start = startOfDay(ref).getTime();
+  let n = 0;
+  for (const tsk of tasks) {
+    const c = new Date(tsk.createdAt as unknown as string).getTime();
+    if (!Number.isNaN(c) && startOfDay(new Date(c)).getTime() === start) {
+      n += 1;
+    }
+  }
+  return n;
+}
+
 export function computeStats(
   tasks: ResponseTaskDto[],
   viewerId?: string,

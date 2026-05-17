@@ -17,6 +17,7 @@ export * from "./tasks/response-task.dto"
 export * from "./tasks/task-access.rpc.dto"
 export * from "./tasks/update-task.dto"
 export * from "./user/response-user.dto"
+export * from "./user/patch-worker-profile.dto"
 export * from "./user/update-user.dto"
 
 

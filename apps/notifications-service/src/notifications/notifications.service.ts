@@ -148,6 +148,11 @@ export class NotificationsService {
     }
   }
 
+
+
+  notifyProfileBroadcast(payload: { userId: string }) {
+    this.wsGateway.emitProfileDirectoryChanged({ userId: payload.userId });
+  }
   private emitBoard(payload: TaskNotificationPayload, reason: KanbanBoardChangeDto['reason']) {
     const timestamp = payload.timestamp || new Date().toISOString();
     this.wsGateway.emitBoardChanged({

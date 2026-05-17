@@ -12,6 +12,7 @@ export interface AuthContextType {
   login: (credentials: LoginAuthDto) => Promise<void>;
   submitRegistrationRequest: (dto: SubmitRegistrationRequestDto) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>(

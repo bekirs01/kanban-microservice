@@ -23,6 +23,16 @@ export enum ActionType {
 
 export enum UserRole {
   ADMIN = "ADMIN",
-  MANAGER = "MANAGER",
   USER = "USER",
+}
+
+export enum WorkerSpecialization {
+  FRONTEND = "FRONTEND",
+  BACKEND = "BACKEND",
+  FULLSTACK = "FULLSTACK",
+  QA = "QA",
+  DESIGNER = "DESIGNER",
+  ANALYST = "ANALYST",
+  DEVOPS = "DEVOPS",
+  OTHER = "OTHER",
 }
