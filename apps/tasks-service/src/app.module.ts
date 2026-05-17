@@ -13,7 +13,6 @@ import { Task } from './task/entity/task.entity';
 
 const {
   entities: _entitiesGlob,
-  migrations: _migrationsGlob,
   ...typeOrmRuntimeOptions
 } = dataSourceOptions;
 

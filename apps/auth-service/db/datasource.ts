@@ -48,7 +48,7 @@ export const dataSourceOptions: DataSourceOptions = {
       ? [join(packageRoot, "db/migrations/*.ts")]
       : [join(packageRoot, "dist/db/migrations/*.js")],
   migrationsTableName: 'migrations',
-  migrationsRun: false,
+  migrationsRun: true,
   synchronize: process.env.TYPEORM_SYNC === "true",
   logging: process.env.NODE_ENV !== 'production',
   extra: {
