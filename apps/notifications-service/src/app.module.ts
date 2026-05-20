@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthModule } from './health/health.module';
 import { Notification } from './notifications/entity/notification.entity';
+import { TelegramDeadlineReminder } from './telegram/entity/telegram-deadline-reminder.entity';
 
 const {
   entities: _entitiesGlob,
@@ -21,7 +22,7 @@ const {
     }),
     TypeOrmModule.forRoot({
       ...typeOrmRuntimeOptions,
-      entities: [Notification],
+      entities: [Notification, TelegramDeadlineReminder],
     }),
     NotificationsModule,
     HealthModule,

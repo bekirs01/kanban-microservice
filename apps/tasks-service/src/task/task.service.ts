@@ -10,6 +10,7 @@ import {
   PaginationResultDto,
   ResponseTaskHistoryDto,
   TaskAccessRpcPayload,
+  TaskChecklistItem,
   TaskHistoryPayload,
   TaskNotificationPayload,
   UpdateTaskPayload,
@@ -19,12 +20,46 @@ import {
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
 import { CommentService } from 'src/comment/comment.service';
 import { Comment } from 'src/comment/entity/comment.entity';
 import { AuditChanges, TaskHistory } from 'src/history/entity/task-history.entity';
 import { Brackets, Repository } from 'typeorm';
 import { DeleteResult } from 'typeorm/browser';
 import { Task } from './entity/task.entity';
+
+const CHECKLIST_TITLE_MAX = 200;
+const CHECKLIST_MAX_ITEMS = 50;
+
+function sanitizeChecklist(input: unknown): TaskChecklistItem[] {
+  if (!Array.isArray(input)) return [];
+  const seenIds = new Set<string>();
+  const out: TaskChecklistItem[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object') continue;
+    const candidate = raw as Record<string, unknown>;
+    const titleRaw =
+      typeof candidate.title === 'string' ? candidate.title.trim() : '';
+    if (!titleRaw) continue;
+    const idRaw =
+      typeof candidate.id === 'string' && candidate.id.trim().length > 0
+        ? candidate.id.trim()
+        : '';
+    let id = idRaw && !seenIds.has(idRaw) ? idRaw : '';
+    if (!id) {
+      id = randomUUID();
+      while (seenIds.has(id)) id = randomUUID();
+    }
+    seenIds.add(id);
+    out.push({
+      id,
+      title: titleRaw.slice(0, CHECKLIST_TITLE_MAX),
+      completed: candidate.completed === true,
+    });
+    if (out.length >= CHECKLIST_MAX_ITEMS) break;
+  }
+  return out;
+}
 
 @Injectable()
 export class TaskService {
@@ -82,7 +117,12 @@ export class TaskService {
     const { requesterRole, ...toSave } = dto;
     void requesterRole;
 
-    const saved = await this.taskRepository.save(toSave as Task);
+    const normalized = {
+      ...toSave,
+      checklist: sanitizeChecklist((toSave as { checklist?: unknown }).checklist),
+    };
+
+    const saved = await this.taskRepository.save(normalized as Task);
     const recipientSet = new Set((saved.assignees || []).filter(Boolean));
     recipientSet.delete(saved.creatorId);
     const recipients = [...recipientSet];
@@ -153,7 +193,8 @@ export class TaskService {
       void _aid;
       void _rr;
       const keys = Object.keys(incoming).filter((k) => (incoming as Record<string, unknown>)[k] !== undefined);
-      if (keys.some((k) => k !== 'status')) {
+      const allowedForWorker = new Set(['status', 'checklist']);
+      if (keys.some((k) => !allowedForWorker.has(k))) {
         throw new ForbiddenRpcException();
       }
     }
@@ -163,10 +204,23 @@ export class TaskService {
     void __aid;
     void __rr;
 
+    const workerPatch: Partial<Task> = {};
+    if (data.status !== undefined) workerPatch.status = data.status as Task['status'];
+    if ((data as { checklist?: unknown }).checklist !== undefined) {
+      workerPatch.checklist = sanitizeChecklist(
+        (data as { checklist?: unknown }).checklist,
+      );
+    }
+
+    const adminPatch: Partial<Task> = { ...fieldsToMerge } as Partial<Task>;
+    if ((adminPatch as { checklist?: unknown }).checklist !== undefined) {
+      adminPatch.checklist = sanitizeChecklist(
+        (adminPatch as { checklist?: unknown }).checklist,
+      );
+    }
+
     const patch: Partial<Task> =
-      role === UserRole.USER
-        ? { status: data.status as Task['status'] }
-        : ({ ...fieldsToMerge } as Partial<Task>);
+      role === UserRole.USER ? workerPatch : adminPatch;
 
     const synthetic: UpdateTaskPayload = {
       taskId: data.taskId,

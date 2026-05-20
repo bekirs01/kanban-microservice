@@ -24,18 +24,34 @@ export const formatFriendlyDate = (
   return format(d, "dd MMM yy", { locale });
 };
 
+export const formatFriendlyDateTime = (
+  input: string | Date | undefined,
+  locale: Locale,
+  t: TranslateLookup,
+): string => {
+  if (!input) return t("common.dash");
+  const d = typeof input === "string" ? new Date(input) : input;
+  if (Number.isNaN(d.getTime())) return t("common.dash");
+  const timeStr = format(d, "HH:mm", { locale });
+  if (isToday(d)) return `${t("history.dateRelativeToday")} · ${timeStr}`;
+  if (isTomorrow(d)) return `${t("history.dateRelativeTomorrow")} · ${timeStr}`;
+  return `${format(d, "dd MMM yy", { locale })} · ${timeStr}`;
+};
+
 export const mapTaskToForm = (task: ResponseTaskDto): UpdateTaskFormData => {
   const rawDeadline = task?.deadline
     ? new Date(String(task.deadline))
     : undefined;
-  const dateStr = rawDeadline
-    ? rawDeadline.toISOString().slice(0, 10)
-    : undefined;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const dateTimeLocal =
+    rawDeadline && !Number.isNaN(rawDeadline.getTime())
+      ? `${rawDeadline.getFullYear()}-${pad(rawDeadline.getMonth() + 1)}-${pad(rawDeadline.getDate())}T${pad(rawDeadline.getHours())}:${pad(rawDeadline.getMinutes())}`
+      : undefined;
   return {
     title: task.title,
     description: task.description,
     priority: task.priority,
-    deadline: dateStr,
+    deadline: dateTimeLocal,
     assignees: task.assignees ?? [],
   };
 };

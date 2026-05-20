@@ -96,6 +96,13 @@ export const ruNested: MessageTree = {
       high: "Высокий",
       urgent: "Срочно",
     },
+    checklistSectionTitle: "Шаги выполнения",
+    checklistEmpty: "Чек-лист пока пуст.",
+    checklistEmptyManage: "Чек-лист пуст. Добавьте первый шаг ниже.",
+    checklistProgress: "{done}/{total} готово",
+    checklistMarkDone: "Отметить как выполнено",
+    checklistMarkUndone: "Снять отметку выполнения",
+    checklistUpdateError: "Не удалось обновить чек-лист.",
   },
   auth: {
     login: "Вход",
@@ -180,17 +187,42 @@ export const ruNested: MessageTree = {
   createTask: {
     dialogTitle: "Создание задачи",
     dialogDescription: "Заполните поля, чтобы добавить задачу.",
+    dialogSubtitle:
+      "Опишите работу, выберите приоритет и срок. AI-помощник поможет собрать черновик за секунды.",
     titleLabel: "Название",
     titlePlaceholder: "Краткое название",
     descriptionLabel: "Описание",
     descriptionPlaceholder: "Опишите работу",
     priorityLabel: "Приоритет",
     priorityPlaceholder: "Выберите приоритет",
-    deadlineLabel: "Дедлайн",
+    deadlineLabel: "Срок выполнения",
+    deadlineHelp: "Дата и точное время дедлайна.",
     submitIdle: "Создать задачу",
     submitBusy: "Создание…",
     successToast: "Задача создана.",
     errorFallback: "Не удалось создать задачу.",
+    aiTitle: "AI-помощник",
+    aiSubtitle:
+      "Опишите задачу словами — помощник предложит название, описание, чек-лист и срок.",
+    aiPromptPlaceholder:
+      "Например: «Нужно подготовить презентацию к завтрашнему демо»",
+    aiGenerate: "Сгенерировать",
+    aiBusy: "Готовим черновик…",
+    aiEmptyPrompt: "Опишите задачу хотя бы одним предложением.",
+    aiIdleHint:
+      "Помощник работает локально, без обращения к внешним сервисам.",
+    aiPreparedHint:
+      "AI подготовил черновик задачи. Проверьте и создавайте.",
+    aiAppliedToast: "Черновик задачи готов.",
+    checklistTitle: "Шаги выполнения",
+    checklistSubtitle:
+      "Разбейте задачу на пошаговый чек-лист — его можно будет отмечать в карточке.",
+    checklistEmpty: "Пока нет шагов. Добавьте первый ниже.",
+    checklistAddPlaceholder: "Описание шага",
+    checklistAddAria: "Добавить шаг",
+    checklistRemoveAria: "Удалить шаг",
+    checklistCount: "Шагов в чек-листе: {count}",
+    checklistNoneHint: "Чек-лист не обязателен.",
   },
   comments: {
     title: "Комментарии",

@@ -1,5 +1,8 @@
 import { useTranslation } from "@/i18n/useTranslation";
-import { formatFriendlyDate } from "@/lib/taskDetailUtils";
+import {
+  formatFriendlyDate,
+  formatFriendlyDateTime,
+} from "@/lib/taskDetailUtils";
 import { Calendar, Clock, User } from "lucide-react";
 import React from "react";
 import type { ResponseTaskDto } from "@challenge/types";
@@ -21,7 +24,7 @@ export const TaskDetailsPanel: React.FC<Props> = ({
 
   const deadlineLabel =
     typeof task?.deadline === "string" || task?.deadline instanceof Date
-      ? formatFriendlyDate(task.deadline as string | Date, dateFnsLocale, t)
+      ? formatFriendlyDateTime(task.deadline as string | Date, dateFnsLocale, t)
       : t("common.dash");
 
   const createdDisplay =
@@ -58,7 +61,7 @@ export const TaskDetailsPanel: React.FC<Props> = ({
             <p className="text-xs text-muted-foreground">{t("task.deadlineLabel")}</p>
             {isEditing ? (
               <input
-                type="date"
+                type="datetime-local"
                 className="border-input h-9 rounded-md bg-transparent px-3 text-sm w-full"
                 {...registerTask("deadline")}
               />

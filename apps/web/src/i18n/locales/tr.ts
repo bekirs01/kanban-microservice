@@ -96,6 +96,13 @@ export const trNested: MessageTree = {
       high: "Yüksek",
       urgent: "Acil",
     },
+    checklistSectionTitle: "Kontrol listesi",
+    checklistEmpty: "Henüz kontrol listesi yok.",
+    checklistEmptyManage: "Kontrol listesi boş. Aşağıdan ilk adımı ekleyin.",
+    checklistProgress: "{done}/{total} tamamlandı",
+    checklistMarkDone: "Tamamlandı olarak işaretle",
+    checklistMarkUndone: "Tamamlandı işaretini kaldır",
+    checklistUpdateError: "Kontrol listesi güncellenemedi.",
   },
   auth: {
     login: "Giriş",
@@ -181,6 +188,8 @@ export const trNested: MessageTree = {
     dialogTitle: "Görev oluştur",
     dialogDescription:
       "Yeni bir görev oluşturmak için alanları doldurun.",
+    dialogSubtitle:
+      "İşi tarif edin, öncelik ve son tarih seçin. AI asistanı taslağı sizin için hazırlasın.",
     titleLabel: "Başlık",
     titlePlaceholder: "Kısa başlık",
     descriptionLabel: "Açıklama",
@@ -188,10 +197,33 @@ export const trNested: MessageTree = {
     priorityLabel: "Öncelik",
     priorityPlaceholder: "Öncelik seçin",
     deadlineLabel: "Bitiş tarihi",
+    deadlineHelp: "Görevin tamamlanması gereken tarih ve saat.",
     submitIdle: "Görev oluştur",
     submitBusy: "Oluşturuluyor…",
     successToast: "Görev oluşturuldu.",
     errorFallback: "Görev oluşturulamadı.",
+    aiTitle: "AI Görev Asistanı",
+    aiSubtitle:
+      "Görevi doğal dilde anlatın — asistan başlık, açıklama, kontrol listesi ve son tarih önerir.",
+    aiPromptPlaceholder:
+      "Örnek: \"Fix auth bug before tomorrow\"",
+    aiGenerate: "AI ile oluştur",
+    aiBusy: "Taslak hazırlanıyor…",
+    aiEmptyPrompt: "Görevi anlatan kısa bir cümle yazın.",
+    aiIdleHint:
+      "Asistan tamamen yerel çalışır — dış servise istek gönderilmez.",
+    aiPreparedHint:
+      "AI bir görev taslağı hazırladı. Kontrol edip oluşturabilirsiniz.",
+    aiAppliedToast: "Görev taslağı hazır.",
+    checklistTitle: "Kontrol listesi",
+    checklistSubtitle:
+      "Görevi adımlara bölün. Görev kartında daha sonra işaretlenebilir.",
+    checklistEmpty: "Henüz adım yok. Aşağıdan ilkini ekleyin.",
+    checklistAddPlaceholder: "Adımı yazın",
+    checklistAddAria: "Adım ekle",
+    checklistRemoveAria: "Adımı sil",
+    checklistCount: "Kontrol listesinde {count} adım",
+    checklistNoneHint: "Kontrol listesi isteğe bağlıdır.",
   },
   comments: {
     title: "Yorumlar",

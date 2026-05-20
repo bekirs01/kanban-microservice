@@ -1,5 +1,11 @@
 import { TaskPriority, TaskStatus } from "../../enums/index.js";
 
+export interface TaskChecklistItem {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export class ResponseTaskDto {
   id: string;
   title: string;
@@ -11,4 +17,5 @@ export class ResponseTaskDto {
   creatorId: string;
   createdAt: Date;
   archivedAt?: Date | string | null;
+  checklist?: TaskChecklistItem[];
 }

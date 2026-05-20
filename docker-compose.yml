@@ -162,6 +162,10 @@ services:
       - DB_USER=postgres
       - DB_PASS=password
       - DB_NAME=challenge_db
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_PERSONAL_CHAT_ID=${TELEGRAM_PERSONAL_CHAT_ID:-}
+      - TELEGRAM_REMINDER_WINDOW_HOURS=${TELEGRAM_REMINDER_WINDOW_HOURS:-24}
+      - TELEGRAM_REMINDER_SCAN_INTERVAL_MINUTES=${TELEGRAM_REMINDER_SCAN_INTERVAL_MINUTES:-10}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3004/health"]
       interval: 5s

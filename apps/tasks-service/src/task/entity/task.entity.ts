@@ -1,4 +1,4 @@
-import { TaskPriority, TaskStatus } from "@challenge/types";
+import { TaskChecklistItem, TaskPriority, TaskStatus } from "@challenge/types";
 import { Comment } from "../../comment/entity/comment.entity";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
@@ -47,4 +47,7 @@ export class Task {
 
   @Column({ type: "timestamp", nullable: true })
   archivedAt!: Date | null;
+
+  @Column({ type: "jsonb", nullable: false, default: () => "'[]'::jsonb" })
+  checklist!: TaskChecklistItem[];
 }

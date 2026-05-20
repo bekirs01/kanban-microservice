@@ -20,7 +20,10 @@
     "dev:auth": "turbo run dev --filter=@challenge/auth-service",
     "build:types": "turbo run build --filter=@challenge/types",
     "build:exceptions": "turbo run build --filter=@challenge/exceptions",
-    "seed": "ts-node scripts/seed.ts"
+    "seed": "ts-node scripts/seed.ts",
+    "seed:workers": "node scripts/seed-demo-workers.cjs",
+    "seed:tasks": "node scripts/seed-demo-tasks.cjs",
+    "telegram:test-reminder": "node scripts/telegram-test-reminder.cjs"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

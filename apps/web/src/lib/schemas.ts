@@ -25,6 +25,15 @@ export function buildCreateTaskSchema(t: TranslateFn) {
     priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
     deadline: z.string().min(1, t("validation.deadlineRequired")),
     assignees: z.array(z.string()).optional(),
+    checklist: z
+      .array(
+        z.object({
+          id: z.string().optional(),
+          title: z.string().min(1),
+          completed: z.boolean().optional(),
+        }),
+      )
+      .optional(),
   });
 }
 

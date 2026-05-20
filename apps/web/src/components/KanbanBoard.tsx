@@ -277,7 +277,10 @@ function TaskCard({
 }) {
   const { t, dateFnsLocale } = useTranslation();
   const overdue = isTaskOverdue(task);
-  const progressPct =
+  const checklist = Array.isArray(task.checklist) ? task.checklist : [];
+  const checklistTotal = checklist.length;
+  const checklistDone = checklist.filter((item) => item?.completed).length;
+  const statusFallbackPct =
     task.status === "DONE"
       ? 100
       : task.status === "REVIEW"
@@ -285,6 +288,10 @@ function TaskCard({
         : task.status === "IN_PROGRESS"
           ? 45
           : 12;
+  const progressPct =
+    checklistTotal > 0
+      ? Math.round((checklistDone / checklistTotal) * 100)
+      : statusFallbackPct;
 
   return (
     <Card

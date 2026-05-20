@@ -1,6 +1,24 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { TaskPriority, TaskStatus, UserRole } from '../../enums';
+
+export class TaskChecklistItemDto {
+  @ApiPropertyOptional({ description: 'Stable identifier for the checklist item' })
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @ApiProperty({ description: 'Checklist step text', example: 'Verify deployment logs' })
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @ApiPropertyOptional({ description: 'Whether the step is marked as done', default: false })
+  @IsOptional()
+  @IsBoolean()
+  completed?: boolean;
+}
 
 export class CreateTaskDto {
 
@@ -30,9 +48,16 @@ export class CreateTaskDto {
   @IsString({ each: true })
   assignees?: string[];
 
-  @ApiProperty({ example: '2025-12-25T23:59:59Z', description: 'Data limite ISO8601' })
+  @ApiProperty({ example: '2025-12-25T23:59:59Z', description: 'Data limite ISO8601 com data e hora' })
   @IsDateString()
   deadline: Date;
+
+  @ApiPropertyOptional({ type: [TaskChecklistItemDto], description: 'Optional execution checklist' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TaskChecklistItemDto)
+  checklist?: TaskChecklistItemDto[];
 }
 
 export interface CreateTaskPayload extends CreateTaskDto {

@@ -96,6 +96,13 @@ export const enNested: MessageTree = {
       high: "High",
       urgent: "Urgent",
     },
+    checklistSectionTitle: "Checklist",
+    checklistEmpty: "No checklist items yet.",
+    checklistEmptyManage: "No checklist items yet. Add the first one below.",
+    checklistProgress: "{done}/{total} done",
+    checklistMarkDone: "Mark as done",
+    checklistMarkUndone: "Mark as not done",
+    checklistUpdateError: "Could not update checklist.",
   },
   auth: {
     login: "Sign in",
@@ -179,6 +186,8 @@ export const enNested: MessageTree = {
     dialogTitle: "Create task",
     dialogDescription:
       "Fill in the fields below to create a new task.",
+    dialogSubtitle:
+      "Describe the work, pick priority and deadline. The AI assistant can draft the rest for you.",
     titleLabel: "Title",
     titlePlaceholder: "Short title",
     descriptionLabel: "Description",
@@ -186,10 +195,33 @@ export const enNested: MessageTree = {
     priorityLabel: "Priority",
     priorityPlaceholder: "Select priority",
     deadlineLabel: "Deadline",
+    deadlineHelp: "Date and exact time the task is due.",
     submitIdle: "Create task",
     submitBusy: "Creating…",
     successToast: "Task created.",
     errorFallback: "Could not create task.",
+    aiTitle: "AI Task Assistant",
+    aiSubtitle:
+      "Describe the task in natural language — the assistant drafts title, description, checklist, and deadline.",
+    aiPromptPlaceholder:
+      'For example: "Fix auth bug before tomorrow"',
+    aiGenerate: "Generate with AI",
+    aiBusy: "Drafting…",
+    aiEmptyPrompt: "Write at least a short sentence describing the task.",
+    aiIdleHint:
+      "The assistant runs locally — no external API calls.",
+    aiPreparedHint:
+      "AI prepared a task draft. Review and create it.",
+    aiAppliedToast: "Task draft ready.",
+    checklistTitle: "Checklist",
+    checklistSubtitle:
+      "Break the task into steps. They can be ticked off later from the task detail.",
+    checklistEmpty: "No steps yet. Add the first one below.",
+    checklistAddPlaceholder: "Describe a step",
+    checklistAddAria: "Add step",
+    checklistRemoveAria: "Remove step",
+    checklistCount: "{count} step(s) in the checklist",
+    checklistNoneHint: "Checklist is optional.",
   },
   comments: {
     title: "Comments",

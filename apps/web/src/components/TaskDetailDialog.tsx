@@ -1,3 +1,4 @@
+import TaskChecklist from "@/components/TaskChecklist";
 import TaskComments from "@/components/TaskComments";
 import TaskDescription from "@/components/TaskDescription";
 import TaskDetailHeader from "@/components/TaskDetailHeader";
@@ -432,6 +433,19 @@ export function TaskDetailDialog({
                     isEditing={isEditing}
                     registerTask={registerTask}
                     taskErrors={taskErrors}
+                  />
+
+                  <Separator />
+
+                  <TaskChecklist
+                    task={task}
+                    canToggle={
+                      !isArchived &&
+                      (manageAssignments ||
+                        (!!user?.id &&
+                          (task?.assignees ?? []).includes(user.id)))
+                    }
+                    canManage={manageAssignments && !isArchived}
                   />
 
                   <Separator />
